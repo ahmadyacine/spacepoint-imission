@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Create Mission</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#241134', secondary: '#653f84', light: '#D7D2CB' },
+          fontFamily: { sans: ['Inter', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #1a0c27; color: #D7D2CB; min-height: 100vh; }
+    .input-field {
+      background: rgba(255,255,255,0.05);
+      border: 1.5px solid rgba(215,210,203,0.15);
+      color: #D7D2CB;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+    }
+    .input-field:focus { border-color: #653f84; box-shadow: 0 0 0 3px rgba(101,63,132,0.25); outline: none; }
+    .input-field::placeholder { color: rgba(215,210,203,0.35); }
+    select.input-field option { background: #241134; color: #D7D2CB; }
+    .btn-primary { background: linear-gradient(135deg, #653f84, #241134); transition: opacity 0.2s, transform 0.1s; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .step-active { background: #653f84; color: #fff; }
+    .step-done { background: rgba(101,63,132,0.5); color: rgba(215,210,203,0.7); }
+    .step-future { background: rgba(101,63,132,0.12); color: rgba(215,210,203,0.25); }
+    .step-line-done { background: linear-gradient(90deg,#653f84,#653f84); }
+    .step-line-future { background: rgba(101,63,132,0.2); }
+  </style>
+</head>
+<body>
+
+  <!-- Top Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.8);backdrop-filter:blur(12px);">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm" style="color:rgba(215,210,203,0.6);">Loading…</span>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border transition-colors hover:bg-white/5" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Progress Stepper -->
+  <div class="px-6 py-6" style="background:rgba(36,17,52,0.5);">
+    <div class="max-w-4xl mx-auto">
+      <p class="text-xs font-semibold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.4);">Mission Journey</p>
+      <div class="flex items-center gap-0" id="stepper"></div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="max-w-2xl mx-auto px-4 py-10">
+
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold text-white mb-2">Create Your Mission</h1>
+      <p class="text-sm" style="color:rgba(215,210,203,0.5);">Define the high-level parameters of your satellite mission. You can always update these later.</p>
+    </div>
+
+    <!-- Alert -->
+    <div id="msg" class="hidden rounded-xl px-4 py-3 text-sm mb-6 font-medium"></div>
+
+    <!-- Mission Form Card -->
+    <div class="rounded-2xl p-8 space-y-6" style="background:rgba(255,255,255,0.04);border:1.5px solid rgba(215,210,203,0.1);">
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Mission Name *</label>
+          <input type="text" id="mission-name" class="input-field" placeholder="e.g. EduSat-1" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">School Name (Optional)</label>
+          <input type="text" id="school-name" class="input-field" placeholder="e.g. Space Academy" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Student Grade (Optional)</label>
+        <input type="text" id="student-grade" class="input-field" placeholder="e.g. Grade 11" />
+      </div>
+
+      <!-- Mission Objective Card -->
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(215,210,203,0.08);border-radius:1rem;padding:1.5rem;">
+        <p class="text-xs font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.5);">📋 Mission Objective (Requirement Form)</p>
+
+        <!-- R1: Primary Objective -->
+        <div class="mb-5">
+          <p class="text-xs font-semibold mb-1" style="color:#c4a0e8;">Primary Mission Objective</p>
+          <p class="text-xs mb-2" style="color:rgba(215,210,203,0.55);">The satellite shall achieve the primary mission objective of:</p>
+          <input type="text" id="obj-1" class="input-field" placeholder="e.g., capturing Earth images for environmental monitoring" />
+        </div>
+        <hr style="border-color:rgba(215,210,203,0.07);margin-bottom:1.25rem;"/>
+
+        <!-- R2: Success Criteria -->
+        <div class="mb-5">
+          <p class="text-xs font-semibold mb-1" style="color:#6ee7b7;">✅ Success Criteria</p>
+          <p class="text-xs mb-2" style="color:rgba(215,210,203,0.55);">The mission shall be considered successful if the satellite is able to:</p>
+          <input type="text" id="obj-2" class="input-field" placeholder="e.g., capture and transmit at least 5 images per day with X m resolution" />
+        </div>
+        <hr style="border-color:rgba(215,210,203,0.07);margin-bottom:1.25rem;"/>
+
+        <!-- R3: Mission Lifetime -->
+        <div class="mb-5">
+          <p class="text-xs font-semibold mb-1" style="color:#fcd34d;">⏱️ Mission Lifetime</p>
+          <p class="text-xs mb-2" style="color:rgba(215,210,203,0.55);">The satellite shall operate for a minimum duration of:</p>
+          <input type="text" id="obj-3" class="input-field" placeholder="e.g., 1 year / 6 months / 2 years" />
+        </div>
+        <hr style="border-color:rgba(215,210,203,0.07);margin-bottom:1.25rem;"/>
+
+        <!-- R4: Orbital Altitude -->
+        <div class="mb-5">
+          <p class="text-xs font-semibold mb-1" style="color:#93c5fd;">🛰️ Orbital Altitude / Mission Distance</p>
+          <p class="text-xs mb-2" style="color:rgba(215,210,203,0.55);">The satellite shall operate at an orbital altitude of:</p>
+          <input type="text" id="obj-4" class="input-field" placeholder="e.g., 550 km in Low Earth Orbit (LEO)" />
+        </div>
+        <hr style="border-color:rgba(215,210,203,0.07);margin-bottom:1.25rem;"/>
+
+        <!-- R5: Operational Concept -->
+        <div class="mb-5">
+          <p class="text-xs font-semibold mb-1" style="color:#f9a8d4;">🔁 Operational Concept</p>
+          <p class="text-xs mb-2" style="color:rgba(215,210,203,0.55);">The satellite shall perform its mission tasks:</p>
+          <input type="text" id="obj-5" class="input-field" placeholder="e.g., continuously / during daylight passes / every 2 orbits" />
+        </div>
+        <hr style="border-color:rgba(215,210,203,0.07);margin-bottom:1.25rem;"/>
+
+        <!-- R6: Orbit Type (auto-filled) -->
+        <div class="mb-5">
+          <p class="text-xs font-semibold mb-1" style="color:#34d399;">🌍 Orbit Type</p>
+          <p class="text-xs" style="color:rgba(215,210,203,0.55);">The satellite shall operate in a <span id="orbit-type-label" class="font-bold" style="color:#c4a0e8;">— (select below)</span> orbit.</p>
+          <p class="text-[10px] mt-1" style="color:rgba(215,210,203,0.3);">Auto-filled from your orbit selection below.</p>
+        </div>
+        <hr style="border-color:rgba(215,210,203,0.07);margin-bottom:1.25rem;"/>
+
+        <!-- R7: Orbit Duration (auto-filled) -->
+        <div class="mb-5">
+          <p class="text-xs font-semibold mb-1" style="color:#a78bfa;">🕒 Orbit Duration</p>
+          <p class="text-xs" style="color:rgba(215,210,203,0.55);">The satellite shall complete one orbit in approximately <span id="orbit-dur-label" class="font-bold" style="color:#c4a0e8;">— min</span>.</p>
+          <p class="text-[10px] mt-1" style="color:rgba(215,210,203,0.3);">Auto-filled from your orbit duration below.</p>
+        </div>
+        <hr style="border-color:rgba(215,210,203,0.07);margin-bottom:1.25rem;"/>
+
+        <!-- R8: Orbits Per Day (auto-filled) -->
+        <div>
+          <p class="text-xs font-semibold mb-1" style="color:#fb7185;">🔄 Orbits Per Day</p>
+          <p class="text-xs" style="color:rgba(215,210,203,0.55);">The satellite shall complete approximately <span id="orbit-opd-label" class="font-bold" style="color:#c4a0e8;">— orbits per day</span>.</p>
+          <p class="text-[10px] mt-1" style="color:rgba(215,210,203,0.3);">Auto-filled from your orbits per day below.</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Orbit Type *</label>
+        <select id="orbit-type" class="input-field">
+          <option value="">Select orbit type</option>
+          <option value="LEO">LEO – Low Earth Orbit (160–2,000 km)</option>
+          <option value="MEO">MEO – Medium Earth Orbit (2,000–35,786 km)</option>
+          <option value="GEO">GEO – Geostationary Earth Orbit (35,786 km)</option>
+          <option value="SSO">SSO – Sun-Synchronous Orbit</option>
+          <option value="Custom">Custom</option>
+        </select>
+        <p class="mt-1.5 text-xs" style="color:rgba(215,210,203,0.3);">The orbital regime determines your mission constraints.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Orbit Duration (min) *</label>
+          <input type="number" id="orbit-duration" class="input-field" placeholder="e.g. 94" min="1" step="0.1" oninput="syncOrbitLabels()" />
+          <p class="mt-1.5 text-xs" style="color:rgba(215,210,203,0.3);">Time for one complete orbit in minutes.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Orbits per Day *</label>
+          <input type="number" id="orbits-per-day" class="input-field" placeholder="e.g. 15.3" min="1" step="0.1" oninput="syncOrbitLabels()" />
+          <p class="mt-1.5 text-xs" style="color:rgba(215,210,203,0.3);">Total orbits completed in 24 hours.</p>
+        </div>
+      </div>
+
+      <!-- Auto-fill helper -->
+      <div class="rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3" style="background:rgba(101,63,132,0.12);border:1px solid rgba(101,63,132,0.25);">
+        <svg class="w-5 h-5 shrink-0 mt-0.5 sm:mt-0" style="color:#9b6fc4;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="flex-1">
+          <p class="text-xs font-medium" style="color:#c4a0e8;">Quick fill for standard orbits</p>
+          <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.45);">LEO: ~94 min / 15.3 orbits per day &nbsp;·&nbsp; SSO: ~100 min / 14.4 &nbsp;·&nbsp; GEO: 1436 min / 1</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="autofill('LEO')" class="text-xs px-3 py-1.5 rounded-lg transition-colors hover:bg-white/10" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">LEO</button>
+          <button onclick="autofill('SSO')" class="text-xs px-3 py-1.5 rounded-lg transition-colors hover:bg-white/10" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">SSO</button>
+          <button onclick="autofill('GEO')" class="text-xs px-3 py-1.5 rounded-lg transition-colors hover:bg-white/10" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">GEO</button>
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="saveMission()" id="btn-save"
+          class="btn-primary w-full py-3.5 rounded-xl text-white font-semibold text-sm tracking-wide">
+          Save and Continue →
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Existing missions list -->
+    <div class="mt-8" id="missions-section" style="display:none;">
+      <p class="text-xs font-semibold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Your Missions</p>
+      <div id="missions-list" class="space-y-3"></div>
+    </div>
+
+  </div>
+
+  <script>
+    const API = window.location.origin + '/api';
+    const token = localStorage.getItem('sp_token');
+    if (!token) window.location.href = '/';
+
+    // ── Journey steps ─────────────────────────────────────────────────────────
+    const steps = [
+      { label: 'Create Mission', num: 1 },
+      { label: 'Components', num: 2 },
+      { label: 'CONOPS', num: 3 },
+      { label: 'Data Budget', num: 4 },
+      { label: 'Power Budget', num: 5 },
+      { label: 'Link Budget', num: 6 },
+      { label: 'Mass Budget', num: 7 },
+      { label: 'Cost Budget', num: 8 },
+      { label: 'Dashboard', num: 9 },
+    ];
+    const currentStep = 1;
+
+    function buildStepper() {
+      const el = document.getElementById('stepper');
+      steps.forEach((s, i) => {
+        const active = s.num === currentStep;
+        const done = s.num < currentStep;
+        const cls = active ? 'step-active' : done ? 'step-done' : 'step-future';
+        const textCls = active ? 'text-white' : done ? '' : '';
+        el.innerHTML += `
+          <div class="flex flex-col items-center">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${cls}">${s.num}</div>
+            <span class="text-xs mt-1 hidden sm:block font-medium" style="color:${active?'#c4a0e8':done?'rgba(215,210,203,0.55)':'rgba(215,210,203,0.25)'}">${s.label}</span>
+          </div>
+          ${i < steps.length-1 ? `<div class="flex-1 h-0.5 mx-2 mt-4 sm:mt-4 ${done?'step-line-done':'step-line-future'}"></div>` : ''}
+        `;
+
+
+      });
+    }
+    buildStepper();
+
+    // ── Load user ─────────────────────────────────────────────────────────────
+    fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(u => {
+        document.getElementById('user-name').textContent = u.full_name;
+        if (u.school_name) document.getElementById('school-name').value = u.school_name;
+        if (u.grade) document.getElementById('student-grade').value = u.grade;
+        loadMissions();
+      })
+      .catch(() => logout());
+
+    // ── Load missions ─────────────────────────────────────────────────────────
+    async function loadMissions() {
+      const res = await fetch(`${API}/missions`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.length > 0) {
+        document.getElementById('missions-section').style.display = 'block';
+        const list = document.getElementById('missions-list');
+        list.innerHTML = data.map(m => `
+          <div class="flex items-center justify-between rounded-xl px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors"
+               style="background:rgba(255,255,255,0.03);border:1px solid rgba(215,210,203,0.08);"
+               onclick="goToMission('${m.id}')">
+            <div>
+              <p class="font-semibold text-sm text-white">${m.mission_name}</p>
+              <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.45);">${m.orbit_type} &nbsp;·&nbsp; ${m.orbits_per_day} orbits/day</p>
+            </div>
+            <span class="text-xs px-2 py-1 rounded-full" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">Continue →</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function goToMission(id) {
+      localStorage.setItem('sp_mission_id', id);
+      window.location.href = '/components';
+    }
+
+    // ── Autofill ──────────────────────────────────────────────────────────────
+    const orbitDefaults = { LEO:{dur:94,opd:15.3}, SSO:{dur:100,opd:14.4}, GEO:{dur:1436,opd:1} };
+    function autofill(type) {
+      document.getElementById('orbit-type').value = type;
+      document.getElementById('orbit-duration').value = orbitDefaults[type].dur;
+      document.getElementById('orbits-per-day').value = orbitDefaults[type].opd;
+      syncOrbitLabels();
+    }
+
+    function syncOrbitLabels() {
+      const type = document.getElementById('orbit-type').value;
+      const dur  = document.getElementById('orbit-duration').value;
+      const opd  = document.getElementById('orbits-per-day').value;
+      document.getElementById('orbit-type-label').textContent  = type  || '— (select below)';
+      document.getElementById('orbit-dur-label').textContent   = dur   ? `${dur} min` : '— min';
+      document.getElementById('orbit-opd-label').textContent   = opd   ? `${opd} orbits per day` : '— orbits per day';
+    }
+    document.getElementById('orbit-type').addEventListener('change', syncOrbitLabels);
+
+    // ── Save mission ──────────────────────────────────────────────────────────
+    function showMsg(text, isError = true) {
+      const el = document.getElementById('msg');
+      el.textContent = text;
+      el.classList.remove('hidden');
+      el.style.background = isError ? 'rgba(220,38,38,0.15)' : 'rgba(16,185,129,0.15)';
+      el.style.color = isError ? '#fca5a5' : '#6ee7b7';
+      el.style.border = isError ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(16,185,129,0.3)';
+    }
+
+    async function saveMission() {
+      const name = document.getElementById('mission-name').value.trim();
+      const school = document.getElementById('school-name').value.trim();
+      const grade = document.getElementById('student-grade').value.trim();
+
+      const o1 = document.getElementById('obj-1').value.trim();
+      const o2 = document.getElementById('obj-2').value.trim();
+      const o3 = document.getElementById('obj-3').value.trim();
+      const o4 = document.getElementById('obj-4').value.trim();
+      const o5 = document.getElementById('obj-5').value.trim();
+
+      const orbit = document.getElementById('orbit-type').value;
+      const dur   = parseFloat(document.getElementById('orbit-duration').value);
+      const opd   = parseFloat(document.getElementById('orbits-per-day').value);
+
+      if (!name) return showMsg('Please enter a mission name.');
+      if (!o1) return showMsg('Please fill in the Primary Mission Objective.');
+      if (!o2) return showMsg('Please fill in the Success Criteria.');
+      if (!o3) return showMsg('Please fill in the Mission Lifetime.');
+      if (!o4) return showMsg('Please fill in the Orbital Altitude.');
+      if (!o5) return showMsg('Please fill in the Operational Concept.');
+      if (!orbit) return showMsg('Please select an orbit type.');
+      if (!dur || dur <= 0) return showMsg('Please enter a valid orbit duration.');
+      if (!opd || opd <= 0) return showMsg('Please enter a valid number of orbits per day.');
+
+      // Build structured objective string
+      const fullObj = [
+        `[Primary Objective] The satellite shall achieve the primary mission objective of: ${o1}`,
+        `[Success Criteria] The mission shall be considered successful if the satellite is able to: ${o2}`,
+        `[Mission Lifetime] The satellite shall operate for a minimum duration of: ${o3}`,
+        `[Orbital Altitude] The satellite shall operate at an orbital altitude of: ${o4}`,
+        `[Operational Concept] The satellite shall perform its mission tasks: ${o5}`,
+        `[Orbit Type] The satellite shall operate in a ${orbit} orbit.`,
+        `[Orbit Duration] The satellite shall complete one orbit in approximately ${dur} minutes.`,
+        `[Orbits Per Day] The satellite shall complete approximately ${opd} orbits per day.`,
+      ].join(' | ');
+
+      const btn = document.getElementById('btn-save');
+      btn.textContent = 'Saving…';
+      btn.disabled = true;
+
+      try {
+        // 1. Update user profile (school/grade)
+        await fetch(`${API}/auth/me`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ school_name: school, grade: grade })
+        });
+
+        // 2. Create/Save mission
+        const res = await fetch(`${API}/missions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ mission_name: name, mission_objective: fullObj, orbit_type: orbit, orbit_duration_min: dur, orbits_per_day: opd })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to create mission');
+        localStorage.setItem('sp_mission_id', data.id);
+        window.location.href = '/components';
+      } catch (err) {
+        showMsg(err.message);
+        btn.textContent = 'Save and Continue →';
+        btn.disabled = false;
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – CONOPS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#241134', secondary: '#653f84', light: '#D7D2CB' },
+          fontFamily: { sans: ['Inter','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; background:#1a0c27; color:#D7D2CB; }
+    .input-dur {
+      background:rgba(255,255,255,0.07);
+      border:1.5px solid rgba(215,210,203,0.18);
+      color:#D7D2CB; border-radius:0.5rem;
+      padding:0.35rem 0.5rem; font-size:0.8rem;
+      width:5rem; text-align:center;
+      transition:border-color 0.2s;
+    }
+    .input-dur:focus { border-color:#653f84; outline:none; box-shadow:0 0 0 2px rgba(101,63,132,0.25); }
+    .toggle-btn {
+      width:3.5rem; height:1.8rem; border-radius:9999px;
+      display:inline-flex; align-items:center; justify-content:center;
+      font-size:0.65rem; font-weight:700; letter-spacing:0.03em;
+      cursor:pointer; border:none; transition:all 0.2s;
+      user-select:none;
+    }
+    .toggle-on  { background:#16a34a; color:#fff; }
+    .toggle-off { background:rgba(215,210,203,0.12); color:rgba(215,210,203,0.4); }
+    .toggle-on:hover  { background:#15803d; }
+    .toggle-off:hover { background:rgba(215,210,203,0.2); }
+    .subsystem-badge { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:0.18rem 0.5rem; border-radius:9999px; }
+    .step-active { background:#653f84; color:#fff; }
+    .step-done   { background:rgba(101,63,132,0.5); color:rgba(215,210,203,0.7); }
+    .step-future { background:rgba(101,63,132,0.12); color:rgba(215,210,203,0.25); }
+    .step-line-done   { background:#653f84; }
+    .step-line-future { background:rgba(101,63,132,0.2); }
+    .card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; }
+    .warn-banner { background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); border-radius:0.75rem; padding:0.75rem 1rem; color:#fcd34d; }
+    .success-banner { background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:0.75rem; padding:0.75rem 1rem; color:#6ee7b7; }
+    th { position:sticky; top:0; z-index:10; background:#1e1030; text-align:center; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:rgba(215,210,203,0.45); padding:0.6rem 0.5rem; }
+    th:first-child { text-align:left; padding-left:0.75rem; position:sticky; left:0; z-index:20; background:#1e1030; }
+    td { padding:0.55rem 0.5rem; border-top:1px solid rgba(215,210,203,0.05); vertical-align:middle; text-align:center; }
+    td:first-child { text-align:left; padding-left:0.75rem; position:sticky; left:0; z-index:5; background:#1a0c27; }
+    tr:hover td { background:rgba(255,255,255,0.02); }
+    tr:hover td:first-child { background:#1c0e2a; }
+    .btn-primary { background:linear-gradient(135deg,#653f84,#241134); color:#fff; border:none; border-radius:0.75rem; padding:0.7rem 1.5rem; font-size:0.85rem; font-weight:600; cursor:pointer; transition:opacity 0.2s,transform 0.1s; }
+    .btn-primary:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.35; cursor:not-allowed; }
+    .btn-sec { background:rgba(255,255,255,0.05); border:1px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.7); border-radius:0.75rem; padding:0.7rem 1.25rem; font-size:0.85rem; font-weight:600; cursor:pointer; transition:background 0.2s; }
+    .btn-sec:hover { background:rgba(255,255,255,0.09); }
+    ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+    .active-chip { background:rgba(16,185,129,0.2); color:#6ee7b7; font-size:0.7rem; font-weight:700; border-radius:9999px; padding:0.2rem 0.55rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between shrink-0" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+      <span id="mission-badge" class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">Loading…</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="window.location.href = '/components'" class="btn-sec text-xs px-3 py-1.5">← Components</button>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border hover:bg-white/5 transition-colors" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Stepper -->
+  <div class="px-6 py-4 shrink-0" style="background:rgba(36,17,52,0.5);">
+    <div class="max-w-6xl mx-auto flex items-center gap-0" id="stepper"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+
+      <!-- Section A: Mission Summary -->
+      <div id="sec-mission" class="card px-6 py-5 grid grid-cols-2 sm:grid-cols-5 gap-4"></div>
+
+      <!-- Validation Banner -->
+      <div id="val-banner" class="hidden"></div>
+
+      <!-- Section B: Mode Duration Cards -->
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.4);">Mission Modes</h2>
+        <div id="mode-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"></div>
+      </div>
+
+      <!-- Section C: CONOPS Matrix -->
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.4);">CONOPS Matrix</h2>
+        <div id="no-comp-msg" class="hidden warn-banner text-sm">⚠️ No components selected. <button onclick="window.location.href = '/components'" class="underline ml-1">Go back to add components.</button></div>
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full" style="border-collapse:collapse;min-width:700px;">
+              <thead id="matrix-head"></thead>
+              <tbody id="matrix-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section D: Summary + Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Summary cards -->
+        <div class="space-y-4">
+          <h2 class="text-sm font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">Summary</h2>
+          <div id="sum-cards" class="space-y-3"></div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:rgba(215,210,203,0.35);">Active Time by Subsystem</p>
+            <div id="subsys-list" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- Doughnut chart -->
+        <div class="card p-5 flex flex-col">
+          <p class="text-xs font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.4);">Mode Duration Share</p>
+          <div class="flex-1 flex items-center justify-center" style="min-height:200px;">
+            <canvas id="chart-doughnut"></canvas>
+          </div>
+        </div>
+
+        <!-- Bar chart -->
+        <div class="card p-5 flex flex-col">
+          <p class="text-xs font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.4);">Active Time by Subsystem (min)</p>
+          <div class="flex-1 flex items-center justify-center" style="min-height:200px;">
+            <canvas id="chart-bar"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Section F: Actions -->
+      <div class="flex flex-col sm:flex-row gap-3 pt-2 pb-8">
+        <button class="btn-sec" onclick="window.location.href = '/components'">← Back to Components</button>
+        <button class="btn-primary" id="btn-save" onclick="saveConops()">💾 Save CONOPS</button>
+        <button class="btn-primary ml-auto" id="btn-next" disabled onclick="goNext()">Continue to Data Budget →</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin + '/api';
+    const token = localStorage.getItem('sp_token');
+    const missionId = localStorage.getItem('sp_mission_id');
+    if (!token) window.location.href = '/';
+    if (!missionId) window.location.href = '/mission';
+
+    // ── Journey stepper (9 steps) ─────────────────────────────────────────────
+    const STEPS = [
+      'Create Mission','Components','CONOPS','Data Budget',
+      'Power Budget','Link Budget','Mass Budget','Cost Budget','Dashboard'
+    ];
+    const CURRENT_STEP = 3;
+    const stepEl = document.getElementById('stepper');
+    STEPS.forEach((s, i) => {
+      const num = i + 1;
+      const active = num === CURRENT_STEP;
+      const done = num < CURRENT_STEP;
+      const cls = active ? 'step-active' : done ? 'step-done' : 'step-future';
+      const lineClass = done ? 'step-line-done' : 'step-line-future';
+      stepEl.innerHTML += `
+        <div class="flex flex-col items-center ${num > 8 ? 'opacity-40' : ''}">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${cls}">${num}</div>
+          <span class="text-xs mt-1 hidden md:block" style="color:${active?'#c4a0e8':done?'rgba(215,210,203,0.55)':'rgba(215,210,203,0.2)'};">${s}</span>
+        </div>
+        ${i < STEPS.length-1 ? `<div class="flex-1 h-0.5 mx-1 mt-3.5 ${lineClass}"></div>` : ''}
+      `;
+    });
+
+    // ── Colors ────────────────────────────────────────────────────────────────
+    const SUBSYS_COLORS = {
+      ADCS:{ bg:'rgba(59,130,246,0.2)',color:'#93c5fd' },
+      CDHS:{ bg:'rgba(16,185,129,0.2)',color:'#6ee7b7' },
+      EPS:{ bg:'rgba(245,158,11,0.2)',color:'#fcd34d' },
+      COMMS:{ bg:'rgba(239,68,68,0.2)',color:'#fca5a5' },
+      Payload:{ bg:'rgba(139,92,246,0.2)',color:'#c4b5fd' },
+      Structure:{ bg:'rgba(156,163,175,0.2)',color:'#d1d5db' },
+      Thermal:{ bg:'rgba(236,72,153,0.2)',color:'#f9a8d4' },
+    };
+    const MODE_PALETTE = ['#653f84','#9b6fc4','#3b82f6','#16a34a','#f59e0b','#ef4444','#8b5cf6'];
+
+    // ── App state ─────────────────────────────────────────────────────────────
+    let mission = null;
+    let modes = [];
+    let components = [];
+    // cellState[mc_id][mode_id] = bool
+    let cellState = {};
+    let doughnutChart = null;
+    let barChart = null;
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    async function init() {
+      const [mRes, conopsRes, meRes] = await Promise.all([
+        fetch(`${API}/missions/${missionId}`, { headers:{Authorization:`Bearer ${token}`} }),
+        fetch(`${API}/missions/${missionId}/conops`, { headers:{Authorization:`Bearer ${token}`} }),
+        fetch(`${API}/auth/me`, { headers:{Authorization:`Bearer ${token}`} }),
+      ]);
+      if (!mRes.ok || !conopsRes.ok) { alert('Failed to load mission data'); return; }
+      mission = await mRes.json();
+      const conops = await conopsRes.json();
+      modes = conops.modes;
+      components = conops.components;
+
+      document.getElementById('mission-badge').textContent = mission.mission_name;
+
+      // Build cellState from server
+      components.forEach(c => {
+        cellState[c.mission_component_id] = {};
+        modes.forEach(m => {
+          cellState[c.mission_component_id][m.id] = c.states[m.id] ?? false;
+        });
+      });
+
+      if (!components.length) {
+        document.getElementById('no-comp-msg').classList.remove('hidden');
+      }
+
+      renderMissionSummary();
+      renderModeCards();
+      renderMatrix();
+      await refreshSummary();
+    }
+    init();
+
+    // ── Section A: Mission Summary ────────────────────────────────────────────
+    function renderMissionSummary() {
+      const el = document.getElementById('sec-mission');
+      const items = [
+        { label:'Mission', value: mission.mission_name },
+        { label:'Orbit Type', value: mission.orbit_type },
+        { label:'Orbit Duration', value: `${mission.orbit_duration_min} min` },
+        { label:'Orbits / Day', value: mission.orbits_per_day },
+        { label:'Components', value: `${components.length} selected` },
+      ];
+      el.innerHTML = items.map(it => `
+        <div>
+          <p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">${it.label}</p>
+          <p class="text-sm font-bold text-white mt-1">${it.value}</p>
+        </div>`).join('');
+    }
+
+    // ── Section B: Mode Duration Cards ────────────────────────────────────────
+    function renderModeCards() {
+      const orbitDur = mission.orbit_duration_min;
+      const totalDur = modes.reduce((s, m) => s + m.duration_min, 0);
+      const valid = Math.abs(totalDur - orbitDur) < 0.001;
+
+      document.getElementById('mode-cards').innerHTML = modes.map((m, i) => {
+        const pct = orbitDur > 0 ? ((m.duration_min / orbitDur) * 100).toFixed(1) : '0.0';
+        return `
+        <div class="card p-4 space-y-3">
+          <div class="flex items-center gap-2">
+            <div class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${MODE_PALETTE[i % MODE_PALETTE.length]};"></div>
+            <p class="text-xs font-bold text-white leading-tight">${m.mode_name}</p>
+          </div>
+          <div>
+            <label class="text-xs" style="color:rgba(215,210,203,0.4);">Duration (min)</label>
+            <div class="flex items-center gap-2 mt-1">
+              <input type="number" class="input-dur" id="dur-${m.id}" value="${m.duration_min}"
+                     min="0" step="0.1" oninput="onDurationChange('${m.id}', this.value)" />
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs" style="color:rgba(215,210,203,0.35);">% of orbit</span>
+            <span class="text-xs font-bold" id="pct-${m.id}" style="color:#c4a0e8;">${pct}%</span>
+          </div>
+        </div>`;
+      }).join('');
+
+      updateTotalBadge(totalDur, valid);
+    }
+
+    // ── Duration change handler ───────────────────────────────────────────────
+    function onDurationChange(modeId, val) {
+      const mode = modes.find(m => m.id === modeId);
+      if (mode) mode.duration_min = parseFloat(val) || 0;
+      const orbitDur = mission.orbit_duration_min;
+      const totalDur = modes.reduce((s, m) => s + m.duration_min, 0);
+      const valid = Math.abs(totalDur - orbitDur) < 0.001;
+      // Update percentage chip for this mode
+      const pct = orbitDur > 0 ? ((mode.duration_min / orbitDur) * 100).toFixed(1) : '0.0';
+      const pctEl = document.getElementById(`pct-${modeId}`);
+      if (pctEl) pctEl.textContent = `${pct}%`;
+      updateTotalBadge(totalDur, valid);
+      recalcActiveTimesLocal();
+      updateCharts();
+    }
+
+    function updateTotalBadge(total, valid) {
+      const orbitDur = mission.orbit_duration_min;
+      const diff = (total - orbitDur).toFixed(3);
+      const banner = document.getElementById('val-banner');
+      banner.className = valid ? 'success-banner hidden': 'warn-banner';
+      banner.classList.remove('hidden');
+      if (valid) {
+        banner.classList.add('hidden');
+      } else {
+        banner.innerHTML = `⚠️ Total mode duration <strong>${total.toFixed(2)} min</strong> ≠ orbit duration <strong>${orbitDur} min</strong> &nbsp;·&nbsp; Difference: <strong>${diff} min</strong>. Adjust mode durations to match.`;
+      }
+      document.getElementById('btn-next').disabled = !valid;
+    }
+
+    // ── Section C: Matrix ─────────────────────────────────────────────────────
+    function renderMatrix() {
+      const head = document.getElementById('matrix-head');
+      const body = document.getElementById('matrix-body');
+
+      // Header row
+      let headHtml = `<tr><th style="min-width:200px;">Component</th>`;
+      modes.forEach(m => {
+        headHtml += `<th style="min-width:90px;" class="text-center font-bold pb-2">${m.mode_name}</th>`;
+      });
+      headHtml += `<th>Active Time</th></tr>`;
+      head.innerHTML = headHtml;
+
+      // Component rows
+      body.innerHTML = components.map(c => {
+        const sc = SUBSYS_COLORS[c.subsystem] || { bg:'rgba(101,63,132,0.3)', color:'#c4a0e8' };
+        let rowHtml = `<td>
+          <div class="flex items-center gap-2">
+            <img src="${c.image_url || 'https://placehold.co/40x40/241134/653f84?text=?'}"
+                 onerror="this.src='https://placehold.co/40x40/241134/653f84?text=?'"
+                 class="w-8 h-8 rounded-lg object-cover shrink-0" />
+            <div>
+              <p class="text-xs font-semibold text-white leading-tight">${c.component_name}</p>
+              <span class="subsystem-badge mt-0.5 inline-block" style="background:${sc.bg};color:${sc.color};">${c.subsystem}</span>
+            </div>
+          </div>
+        </td>`;
+
+        modes.forEach(m => {
+          const on = cellState[c.mission_component_id]?.[m.id] ?? false;
+          rowHtml += `<td class="text-center">
+            <button class="toggle-btn ${on ? 'toggle-on' : 'toggle-off'} mx-auto"
+                    id="cell-${c.mission_component_id}-${m.id}"
+                    onclick="toggleCell('${c.mission_component_id}','${m.id}')">
+              ${on ? 'ON' : 'OFF'}
+            </button>
+          </td>`;
+        });
+
+        const at = calcActiveTime(c.mission_component_id);
+        rowHtml += `<td class="text-center"><span class="active-chip" id="at-${c.mission_component_id}">${at.toFixed(1)} min</span></td>`;
+
+        return `<tr>${rowHtml}</tr>`;
+      }).join('');
+    }
+
+    // ── Toggle cell ───────────────────────────────────────────────────────────
+    function toggleCell(mcId, modeId) {
+      cellState[mcId] = cellState[mcId] || {};
+      cellState[mcId][modeId] = !cellState[mcId][modeId];
+      const btn = document.getElementById(`cell-${mcId}-${modeId}`);
+      if (btn) {
+        const on = cellState[mcId][modeId];
+        btn.className = `toggle-btn ${on ? 'toggle-on' : 'toggle-off'}`;
+        btn.textContent = on ? 'ON' : 'OFF';
+      }
+      // Update active time chip for this row
+      const at = calcActiveTime(mcId);
+      const chip = document.getElementById(`at-${mcId}`);
+      if (chip) chip.textContent = `${at.toFixed(1)} min`;
+      refreshSummaryLocal();
+    }
+
+    // ── Local calculation helpers ─────────────────────────────────────────────
+    function calcActiveTime(mcId) {
+      return modes.reduce((sum, m) => {
+        return sum + (cellState[mcId]?.[m.id] ? m.duration_min : 0);
+      }, 0);
+    }
+
+    function recalcActiveTimesLocal() {
+      components.forEach(c => {
+        const at = calcActiveTime(c.mission_component_id);
+        const chip = document.getElementById(`at-${c.mission_component_id}`);
+        if (chip) chip.textContent = `${at.toFixed(1)} min`;
+      });
+      refreshSummaryLocal();
+    }
+
+    function refreshSummaryLocal() {
+      const totalDur = modes.reduce((s, m) => s + m.duration_min, 0);
+      const valid = Math.abs(totalDur - mission.orbit_duration_min) < 0.001;
+
+      // Build subsystem totals
+      const subsysTotals = {};
+      let unusedComps = [];
+      components.forEach(c => {
+        const at = calcActiveTime(c.mission_component_id);
+        subsysTotals[c.subsystem] = (subsysTotals[c.subsystem] || 0) + at;
+        if (at === 0) unusedComps.push(c.component_name);
+      });
+
+      renderSummaryCards(totalDur, valid, unusedComps);
+      renderSubsystemList(subsysTotals);
+      updateCharts(subsysTotals);
+    }
+
+    async function refreshSummary() {
+      refreshSummaryLocal();
+    }
+
+    // ── Section D: Summary Cards ──────────────────────────────────────────────
+    function renderSummaryCards(totalDur, valid, unusedComps) {
+      const orbitDur = mission.orbit_duration_min;
+      const diff = (totalDur - orbitDur).toFixed(2);
+      document.getElementById('sum-cards').innerHTML = `
+        <div class="card px-4 py-3 flex items-center justify-between">
+          <div>
+            <p class="text-xs" style="color:rgba(215,210,203,0.4);">Total Mode Duration</p>
+            <p class="text-lg font-bold text-white">${totalDur.toFixed(2)} min</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-1 rounded-full" style="background:${valid?'rgba(16,185,129,0.2)':'rgba(245,158,11,0.2)'};color:${valid?'#6ee7b7':'#fcd34d'};">
+            ${valid ? '✓ Valid' : `${diff} min off`}
+          </span>
+        </div>
+        <div class="card px-4 py-3">
+          <p class="text-xs" style="color:rgba(215,210,203,0.4);">Orbit Duration</p>
+          <p class="text-lg font-bold text-white">${orbitDur} min</p>
+        </div>
+        <div class="card px-4 py-3">
+          <p class="text-xs mb-1" style="color:rgba(215,210,203,0.4);">Selected Components</p>
+          <p class="text-lg font-bold text-white">${components.length}</p>
+          ${unusedComps.length ? `<p class="text-xs mt-1" style="color:#fcd34d;">⚠️ ${unusedComps.length} never activated</p>` : ''}
+        </div>
+      `;
+    }
+
+    // ── Subsystem list ────────────────────────────────────────────────────────
+    function renderSubsystemList(totals) {
+      const maxAt = Math.max(...Object.values(totals), 0.01);
+      document.getElementById('subsys-list').innerHTML = Object.entries(totals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([sub, at]) => {
+          const sc = SUBSYS_COLORS[sub] || { bg:'rgba(101,63,132,0.3)', color:'#c4a0e8' };
+          const pct = (at / maxAt * 100).toFixed(0);
+          return `
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs">
+              <span class="subsystem-badge" style="background:${sc.bg};color:${sc.color};">${sub}</span>
+              <span class="font-bold text-white">${at.toFixed(1)} min</span>
+            </div>
+            <div class="w-full rounded-full h-1.5" style="background:rgba(215,210,203,0.08);">
+              <div class="h-1.5 rounded-full" style="width:${pct}%;background:${sc.color};"></div>
+            </div>
+          </div>`;
+        }).join('');
+    }
+
+    // ── Charts ────────────────────────────────────────────────────────────────
+    function updateCharts(subsysTotals) {
+      // Re-compute subsys if not passed
+      if (!subsysTotals) {
+        subsysTotals = {};
+        components.forEach(c => {
+          const at = calcActiveTime(c.mission_component_id);
+          subsysTotals[c.subsystem] = (subsysTotals[c.subsystem] || 0) + at;
+        });
+      }
+
+      // Doughnut – mode duration
+      const dCtx = document.getElementById('chart-doughnut').getContext('2d');
+      const modeDurs = modes.map(m => m.duration_min);
+      const modeLabels = modes.map(m => m.mode_name);
+      if (doughnutChart) doughnutChart.destroy();
+      doughnutChart = new Chart(dCtx, {
+        type: 'doughnut',
+        data: {
+          labels: modeLabels,
+          datasets: [{ data: modeDurs, backgroundColor: MODE_PALETTE, borderWidth: 0 }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color:'rgba(215,210,203,0.65)', font:{ size:10 }, boxWidth:10 } }
+          },
+          cutout: '65%',
+        }
+      });
+
+      // Bar – subsystem active time
+      const bCtx = document.getElementById('chart-bar').getContext('2d');
+      const subLabels = Object.keys(subsysTotals);
+      const subVals = Object.values(subsysTotals);
+      const subColors = subLabels.map(s => SUBSYS_COLORS[s]?.color || '#c4a0e8');
+      if (barChart) barChart.destroy();
+      barChart = new Chart(bCtx, {
+        type: 'bar',
+        data: {
+          labels: subLabels,
+          datasets: [{ data: subVals, backgroundColor: subColors, borderRadius: 6, borderWidth: 0 }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color:'rgba(215,210,203,0.5)', font:{size:10} }, grid: { display:false } },
+            y: { ticks: { color:'rgba(215,210,203,0.5)', font:{size:10} }, grid: { color:'rgba(215,210,203,0.05)' }, title: { display:true, text:'min', color:'rgba(215,210,203,0.35)', font:{size:10} } }
+          }
+        }
+      });
+    }
+
+    // ── Save ──────────────────────────────────────────────────────────────────
+    async function saveConops() {
+      const btn = document.getElementById('btn-save');
+      btn.textContent = 'Saving…';
+      btn.disabled = true;
+
+      const mode_durations = modes.map(m => ({
+        mode_id: m.id,
+        duration_min: m.duration_min
+      }));
+
+      const cell_states = [];
+      components.forEach(c => {
+        modes.forEach(m => {
+          cell_states.push({
+            mission_component_id: c.mission_component_id,
+            mission_mode_id: m.id,
+            is_on: cellState[c.mission_component_id]?.[m.id] ?? false
+          });
+        });
+      });
+
+      try {
+        const res = await fetch(`${API}/missions/${missionId}/conops/save`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+          body: JSON.stringify({ mode_durations, cell_states })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Save failed');
+        }
+        btn.textContent = '✓ Saved!';
+        btn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+        setTimeout(() => {
+          btn.textContent = '💾 Save CONOPS';
+          btn.style.background = '';
+          btn.disabled = false;
+        }, 2000);
+      } catch (err) {
+        alert(err.message);
+        btn.textContent = '💾 Save CONOPS';
+        btn.disabled = false;
+      }
+    }
+
+    function goNext() {
+      // Save first, then navigate
+      saveConops().then(() => {
+        setTimeout(() => { window.location.href = '/data-budget'; }, 500);
+      });
+    }
+
+    function logout() { localStorage.clear(); window.location.href = '/'; }
+  </script>
+</body>
+</html>

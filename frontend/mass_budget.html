@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Mass Budget</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors:{ primary:'#241134', secondary:'#653f84', light:'#D7D2CB' }, fontFamily:{ sans:['Inter','sans-serif'] } } }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; background:#1a0c27; color:#D7D2CB; }
+    .card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; }
+    .field-input { background:rgba(255,255,255,0.07); border:1px solid rgba(215,210,203,0.14); color:#D7D2CB; border-radius:0.6rem; padding:0.4rem 0.6rem; font-size:0.85rem; width:5.5rem; text-align:center; transition:border-color 0.2s; }
+    .field-input:focus { border-color:#653f84; outline:none; box-shadow:0 0 0 2px rgba(101,63,132,0.2); }
+    .unit-label { font-size:0.72rem; font-weight:600; color:rgba(215,210,203,0.4); padding-left:0.4rem; white-space:nowrap; }
+    .calc-cell{ font-size:0.82rem; font-weight:600; color:#c4a0e8; text-align:center; }
+    .subsystem-badge { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:0.18rem 0.5rem; border-radius:9999px; }
+    .status-badge { font-size:0.62rem; font-weight:700; padding:0.15rem 0.45rem; border-radius:9999px; white-space:nowrap; }
+    .status-badge-good { background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.35); }
+    .status-badge-fail { background:rgba(239,68,68,0.2);  color:#fca5a5; border:1px solid rgba(239,68,68,0.35); }
+    .status-badge-weak { background:rgba(245,158,11,0.2); color:#fcd34d; border:1px solid rgba(245,158,11,0.35); }
+    .step-active { background:#653f84; color:#fff; }
+
+    .step-done   { background:rgba(101,63,132,0.5); }
+    .step-future { background:rgba(101,63,132,0.12); color:rgba(215,210,203,0.25); }
+    .calc-row:hover { background:rgba(255,255,255,0.018); }
+    th { background:#1e1030; text-align:center; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:rgba(215,210,203,0.4); padding:0.75rem 0.5rem; position:sticky; top:0; z-index:10; }
+    th:first-child { text-align:left; padding-left:1rem; position:sticky; left:0; z-index:20; }
+    td { padding:0.65rem 0.5rem; border-top:1px solid rgba(215,210,203,0.05); vertical-align:middle; text-align:center; }
+    td:first-child { text-align:left; padding-left:1rem; position:sticky; left:0; z-index:5; background:#1a0c27; }
+
+    .btn-primary { background:linear-gradient(135deg,#653f84,#241134); color:#fff; border:none; border-radius:0.75rem; padding:0.7rem 1.5rem; font-size:0.85rem; font-weight:600; cursor:pointer; transition:opacity 0.2s,transform 0.1s; }
+    .btn-primary:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.35; cursor:not-allowed; }
+    .btn-sec { background:rgba(255,255,255,0.05); border:1px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.7); border-radius:0.75rem; padding:0.7rem 1.25rem; font-size:0.85rem; font-weight:600; cursor:pointer; }
+    .btn-sec:hover { background:rgba(255,255,255,0.09); }
+    .size-pill { background:rgba(255,255,255,0.06); border:1.5px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.6); border-radius:0.6rem; padding:0.4rem 1rem; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.15s; }
+    .size-pill.active { background:linear-gradient(135deg,#653f84,#4a2a6e); border-color:#9b6fc4; color:#fff; }
+    .formula-box { background:rgba(101,63,132,0.1); border:1px solid rgba(101,63,132,0.25); border-radius:0.75rem; padding:1rem 1.25rem; }
+
+    ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between shrink-0" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+      <span id="mission-badge" class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">Loading…</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="window.location.href = '/link-budget'" class="btn-sec text-xs px-3 py-1.5">← Link Budget</button>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Stepper -->
+  <div class="px-6 py-4 shrink-0" style="background:rgba(36,17,52,0.5);">
+    <div class="max-w-6xl mx-auto flex items-center gap-0" id="stepper"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="max-w-[1400px] mx-auto px-4 py-8 space-y-8">
+
+      <!-- Section A: Mission Summary Bar -->
+      <div id="sec-mission" class="card px-6 py-5 grid grid-cols-2 sm:grid-cols-6 gap-4"></div>
+
+
+      <!-- Alert -->
+      <div id="alert-banner" class="hidden rounded-xl px-4 py-3 text-sm font-medium"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Section B: CubeSat Selector + Summaries (LeftCol) -->
+        <div class="lg:col-span-3 space-y-5">
+          <div class="card p-6 space-y-5">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">🛰️ CubeSat Size</p>
+              <div id="size-selector" class="grid grid-cols-2 gap-2"></div>
+            </div>
+            
+            <div class="pt-4 border-t" style="border-color:rgba(215,210,203,0.1);">
+              <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Launch Constraints</p>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center text-sm">
+                  <span style="color:rgba(215,210,203,0.5);">Max Mass</span>
+                  <span class="font-bold" id="const-mass">- kg</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                  <span style="color:rgba(215,210,203,0.5);">Avail. Volume</span>
+                  <span class="font-bold" id="const-vol">- cm³</span>
+                </div>
+              </div>
+            </div>
+
+            <details class="mt-2 text-xs">
+              <summary class="font-semibold cursor-pointer" style="color:#c4a0e8;">📚 Learning Note</summary>
+              <div class="mt-2 leading-relaxed" style="color:rgba(215,210,203,0.6);">
+                <p>"Mass tells us whether the satellite can stay within launch limits."</p>
+                <p class="mt-1">"Volume tells us whether all components fit inside the selected CubeSat size."</p>
+              </div>
+            </details>
+          </div>
+
+          <!-- Section D: Summary Cards (Moved to Sidebar) -->
+          <div class="space-y-4">
+             <div class="card p-5 grid grid-cols-2 gap-4">
+                <div class="col-span-2 border-b pb-2 mb-1" style="border-color:rgba(215,210,203,0.1);">
+                  <p class="text-[10px] font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">Launch Mass Summary</p>
+                </div>
+                <div><p class="text-[10px] text-zinc-500">Total Mass (kg)</p><p class="text-lg font-bold" id="sum-mass-kg">-</p></div>
+                <div><p class="text-[10px] text-zinc-500">Mass Margin (kg)</p><p class="text-lg font-bold" id="sum-mass-mar">-</p></div>
+                <div class="col-span-2"><span id="launch-badge" class="px-3 py-1 rounded-full text-[10px] font-bold">-</span></div>
+             </div>
+
+             <div class="card p-5 grid grid-cols-2 gap-4">
+                <div class="col-span-2 border-b pb-2 mb-1" style="border-color:rgba(215,210,203,0.1);">
+                  <p class="text-[10px] font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">Volume Summary</p>
+                </div>
+                <div><p class="text-[10px] text-zinc-500">Total Volume (cm³)</p><p class="text-lg font-bold" id="sum-vol-cm">-</p></div>
+                <div><p class="text-[10px] text-zinc-500">Vol Margin (cm³)</p><p class="text-lg font-bold" id="sum-vol-mar">-</p></div>
+                <div class="col-span-2"><span id="size-badge" class="px-3 py-1 rounded-full text-[10px] font-bold">-</span></div>
+             </div>
+          </div>
+
+          <!-- Formula Helper -->
+          <details class="card p-4">
+             <summary class="text-xs font-bold uppercase tracking-widest cursor-pointer" style="color:rgba(215,210,203,0.4);">📐 Formulas</summary>
+             <div class="mt-3 space-y-2 text-[10px]" style="color:rgba(215,210,203,0.55);">
+               <p>🔹 <strong style="color:#c4a0e8;">Total Mass</strong> = Quantity × Mass/Unit</p>
+               <p>🔹 <strong style="color:#c4a0e8;">Vol/Unit</strong> = Length × Width × Height</p>
+               <p>🔹 <strong style="color:#c4a0e8;">Mass Margin</strong> = Max Allowed Mass - Total Mass</p>
+               <p>🔹 <strong style="color:#c4a0e8;">Volume Margin</strong> = Avail. Volume - Total Volume</p>
+             </div>
+          </details>
+        </div>
+
+        <!-- Section C: Table + Charts (RightCol) -->
+        <div class="lg:col-span-9 space-y-6">
+
+          <!-- Volume column note -->
+          <div class="formula-box flex gap-4 items-start">
+            <div class="text-lg pt-0.5">📦</div>
+            <div class="text-xs space-y-1.5" style="color:rgba(215,210,203,0.65);">
+              <p class="font-bold uppercase tracking-widest text-[10px] mb-2" style="color:#c4a0e8;">Understanding the Volume Columns</p>
+              <p><strong style="color:#D7D2CB;">Vol/Unit (mm³)</strong> — The volume of a <em>single</em> component, calculated as: <code style="color:#c4a0e8;">Length × Width × Height</code>. This tells you how much space one piece occupies inside the CubeSat.</p>
+              <p><strong style="color:#D7D2CB;">Total Vol (mm³)</strong> — The total space taken by <em>all units</em> of that component: <code style="color:#c4a0e8;">Vol/Unit × Quantity</code>. This is what actually contributes to the satellite's internal volume usage.</p>
+              <p class="mt-1" style="color:rgba(215,210,203,0.4);">💡 The sum of all <strong>Total Vol</strong> values is compared against the <strong>Available Volume</strong> of the selected CubeSat size to determine if everything fits.</p>
+            </div>
+          </div>
+
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs" style="border-collapse:collapse; min-width:1000px;">
+                <thead>
+                  <tr>
+                    <th style="min-width:200px; text-align:left;">Component</th>
+                    <th>Qty</th>
+                    <th>Mass/Unit (g)</th>
+                    <th>Total Mass (g)</th>
+                    <th>L (mm)</th>
+                    <th>W (mm)</th>
+                    <th>H (mm)</th>
+                    <th>Vol/Unit (mm³)</th>
+                    <th>Total Vol (mm³)</th>
+                  </tr>
+                </thead>
+                <tbody id="mass-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Section E: Charts (Larger Layout) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div class="card p-6 flex flex-col items-center">
+                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">⚖️ Mass by Subsystem</p>
+                <div class="w-full h-64 flex justify-center"><canvas id="chart-subsystem"></canvas></div>
+             </div>
+             <div class="card p-6 flex flex-col items-center">
+                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">📦 Volume Usage</p>
+                <div class="w-full h-64 flex justify-center"><canvas id="chart-volume"></canvas></div>
+             </div>
+             <div class="card p-6 col-span-1 md:col-span-2">
+                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">📊 Top Components by Mass (g)</p>
+                <div class="w-full h-64"><canvas id="chart-top"></canvas></div>
+             </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-col sm:flex-row gap-3 pb-10">
+        <button class="btn-sec" onclick="window.location.href = '/link-budget'">← Back to Link Budget</button>
+        <button class="btn-primary" id="btn-save" onclick="saveBudget()">💾 Save Mass Budget</button>
+        <button class="btn-primary ml-auto" id="btn-next" disabled onclick="goNext()">Continue to Cost Budget →</button>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  const API = window.location.origin + '/api';
+  const token=localStorage.getItem('sp_token');
+  const missionId=localStorage.getItem('sp_mission_id');
+  if(!token) window.location.href = '/';
+  if(!missionId) window.location.href = '/mission';
+
+  // ── Stepper ──────────────────────────────────────────────────────────────────
+  const STEPS=['Create Mission','Components','CONOPS','Data Budget','Power Budget','Link Budget','Mass Budget','Cost Budget','Dashboard'];
+  const CURRENT=7;
+  document.getElementById('stepper').innerHTML=STEPS.map((s,i)=>{
+    const n=i+1,active=n===CURRENT,done=n<CURRENT;
+    const cls=active?'step-active':done?'step-done':'step-future';
+    return `<div class="flex flex-col items-center ${n>8?'opacity-40':''}">
+      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${cls}">${n}</div>
+      <span class="text-xs mt-1 hidden md:block" style="color:${active?'#c4a0e8':done?'rgba(215,210,203,0.55)':'rgba(215,210,203,0.2)'};">${s}</span>
+    </div>${i<STEPS.length-1?`<div class="flex-1 h-0.5 mx-1 mt-3.5 ${done?'bg-secondary':'bg-secondary/20'}"></div>`:''}`;
+  }).join('');
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  let rows=[], constraints={}, presets=[], mission=null;
+  let cSubsystem=null, cVolume=null, cTop=null;
+  const SC={ADCS:{bg:'rgba(59,130,246,0.2)',color:'#93c5fd'},CDHS:{bg:'rgba(16,185,129,0.2)',color:'#6ee7b7'},EPS:{bg:'rgba(245,158,11,0.2)',color:'#fcd34d'},COMMS:{bg:'rgba(239,68,68,0.2)',color:'#fca5a5'},Payload:{bg:'rgba(139,92,246,0.2)',color:'#c4b5fd'},Structure:{bg:'rgba(156,163,175,0.2)',color:'#d1d5db'},Thermal:{bg:'rgba(236,72,153,0.2)',color:'#f9a8d4'}};
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  async function init(){
+    const [mRes, bRes]=await Promise.all([
+      fetch(`${API}/missions/${missionId}`,{headers:{Authorization:`Bearer ${token}`}}),
+      fetch(`${API}/missions/${missionId}/mass-budget`,{headers:{Authorization:`Bearer ${token}`}})
+    ]);
+    if(!mRes.ok || !bRes.ok){alert('Load failed');return;}
+    mission=await mRes.json();
+    const bData=await bRes.json();
+    rows=bData.rows;
+    constraints=bData.constraints;
+    presets=constraints.presets;
+
+    document.getElementById('mission-badge').textContent=mission.mission_name;
+    renderMissionBar();
+    renderSizeSelector();
+    renderTable();
+    recalcAll();
+  }
+  init();
+
+  function renderMissionBar(mStatus='', vStatus=''){
+    document.getElementById('sec-mission').innerHTML=`
+      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Mission</p><p class="text-sm font-bold text-white mt-0.5">${mission?.mission_name}</p></div>
+      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Orbit</p><p class="text-sm font-bold text-white mt-0.5">${mission?.orbit_type}</p></div>
+      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">CubeSat Size</p><p class="text-sm font-bold text-white mt-0.5" id="mission-bar-size">${constraints.selected_cubesat_size}</p></div>
+      <div id="bar-badges" class="flex gap-2 sm:col-span-3 justify-end items-center"></div>
+    `;
+    updateBarBadges(mStatus, vStatus);
+  }
+
+  function updateBarBadges(mStatus, vStatus){
+    const el=document.getElementById('bar-badges');
+    if(!el)return;
+    const mOk=mStatus.includes('✅'), vOk=vStatus.includes('✅');
+    el.innerHTML=`
+      <span class="px-3 py-1 rounded-full text-[10px] font-bold ${mOk?'status-badge-good':'status-badge-fail'}">${mOk?'Mass OK':'Heavy'}</span>
+      <span class="px-3 py-1 rounded-full text-[10px] font-bold ${vOk?'status-badge-good':'status-badge-fail'}">${vOk?'Size OK':'Large'}</span>
+    `;
+  }
+
+
+  function renderSizeSelector(){
+    const el=document.getElementById('size-selector');
+    el.innerHTML=presets.map(p=>`
+      <button class="size-pill ${p.size===constraints.selected_cubesat_size?'active':''}" id="pill-${p.size}" onclick="selectSize('${p.size}')">
+        ${p.size}
+      </button>`).join('');
+    updateLimitDisplay();
+  }
+
+  function selectSize(size){
+    constraints.selected_cubesat_size=size;
+    const p=presets.find(it=>it.size===size);
+    if(p){
+      constraints.available_internal_volume_cm3=p.available_volume_cm3;
+      constraints.max_allowed_mass_kg=p.max_mass_kg;
+    }
+    renderSizeSelector();
+    const missionBarSize = document.getElementById('mission-bar-size');
+    if(missionBarSize) missionBarSize.textContent=size;
+    updateLimitDisplay();
+    recalcAll();
+  }
+
+  function updateLimitDisplay(){
+    document.getElementById('const-mass').textContent=`${constraints.max_allowed_mass_kg} kg`;
+    document.getElementById('const-vol').textContent=`${constraints.available_internal_volume_cm3} cm³`;
+  }
+
+  function renderTable(){
+    document.getElementById('mass-tbody').innerHTML=rows.map((r,idx)=>{
+      const sc=SC[r.subsystem]||{bg:'rgba(101,63,132,0.3)',color:'#c4a0e8'};
+      return `<tr class="calc-row">
+        <td>
+          <div class="flex items-center gap-2">
+            <img src="${r.image_url||'https://placehold.co/40x40/241134/653f84?text=?'}"
+                 onerror="this.src='https://placehold.co/40x40/241134/653f84?text=?'"
+                 class="w-8 h-8 rounded-lg object-cover shrink-0" />
+            <div>
+              <p class="text-xs font-semibold text-white leading-tight">${r.component_name}</p>
+              <span class="subsystem-badge mt-0.5 inline-block" style="background:${sc.bg};color:${sc.color};">${r.subsystem}</span>
+            </div>
+          </div>
+        </td>
+
+        <td><input type="number" class="field-input" id="q-${idx}" value="${r.quantity}" min="0" oninput="onRowChange(${idx})"/></td>
+        <td><input type="number" class="field-input" id="m-${idx}" value="${r.mass_per_unit_g||0}" step="0.1" min="0" oninput="onRowChange(${idx})"/></td>
+        <td><div class="calc-cell" id="tm-${idx}">${r.total_mass_g.toFixed(1)}</div></td>
+        <td><input type="number" class="field-input" id="lx-${idx}" value="${r.length_x_mm||0}" step="0.1" min="0" oninput="onRowChange(${idx})"/></td>
+        <td><input type="number" class="field-input" id="wy-${idx}" value="${r.width_y_mm||0}" step="0.1" min="0" oninput="onRowChange(${idx})"/></td>
+        <td><input type="number" class="field-input" id="hz-${idx}" value="${r.height_z_mm||0}" step="0.1" min="0" oninput="onRowChange(${idx})"/></td>
+
+        <td><div class="calc-cell" id="vu-${idx}">${r.volume_per_unit_mm3.toFixed(0)}</div></td>
+        <td><div class="calc-cell" id="tv-${idx}">${r.total_volume_mm3.toFixed(0)}</div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function onRowChange(idx){
+    const r=rows[idx];
+    r.quantity=parseInt(document.getElementById(`q-${idx}`).value)||0;
+    r.mass_per_unit_g=parseFloat(document.getElementById(`m-${idx}`).value)||0;
+    r.length_x_mm=parseFloat(document.getElementById(`lx-${idx}`).value)||0;
+    r.width_y_mm=parseFloat(document.getElementById(`wy-${idx}`).value)||0;
+    r.height_z_mm=parseFloat(document.getElementById(`hz-${idx}`).value)||0;
+    
+    r.total_mass_g = r.quantity * r.mass_per_unit_g;
+    r.volume_per_unit_mm3 = r.length_x_mm * r.width_y_mm * r.height_z_mm;
+    r.total_volume_mm3 = r.quantity * r.volume_per_unit_mm3;
+    
+    document.getElementById(`tm-${idx}`).textContent=r.total_mass_g.toFixed(1);
+    document.getElementById(`vu-${idx}`).textContent=r.volume_per_unit_mm3.toFixed(0);
+    document.getElementById(`tv-${idx}`).textContent=r.total_volume_mm3.toFixed(0);
+    
+    recalcAll();
+  }
+
+  function recalcAll(){
+    let totalMG=0, totalVMM3=0;
+    const subsysTotals={};
+    rows.forEach(r=>{
+      totalMG += r.total_mass_g;
+      totalVMM3 += r.total_volume_mm3;
+      if(!subsysTotals[r.subsystem]) subsysTotals[r.subsystem] = {mass:0, vol:0};
+      subsysTotals[r.subsystem].mass += r.total_mass_g;
+      subsysTotals[r.subsystem].vol += r.total_volume_mm3;
+    });
+
+    const totalMKG=totalMG/1000, totalVCM3=totalVMM3/1000;
+    const massMar=constraints.max_allowed_mass_kg - totalMKG;
+    const volMar=constraints.available_internal_volume_cm3 - totalVCM3;
+    
+    const mOk=massMar>=0, vOk=volMar>=0;
+    const mStatus=mOk?'✅ Within Mass Limit':'❌ Too Heavy';
+    const vStatus=vOk?'✅ Fits Selected Size':'❌ Too Large';
+
+    document.getElementById('sum-mass-kg').textContent=`${totalMKG.toFixed(3)} kg`;
+    document.getElementById('sum-mass-mar').textContent=`${massMar.toFixed(3)} kg`;
+    document.getElementById('sum-mass-mar').className=`text-lg font-bold ${mOk?'text-green-400':'text-red-400'}`;
+    const lb=document.getElementById('launch-badge');
+    lb.textContent=mStatus; lb.className=`px-3 py-1 rounded-full text-[10px] font-bold ${mOk?'status-badge-good':'status-badge-fail'}`;
+
+    document.getElementById('sum-vol-cm').textContent=`${totalVCM3.toFixed(1)} cm³`;
+    document.getElementById('sum-vol-mar').textContent=`${volMar.toFixed(1)} cm³`;
+    document.getElementById('sum-vol-mar').className=`text-lg font-bold ${vOk?'text-green-400':'text-red-400'}`;
+    const sb=document.getElementById('size-badge');
+    sb.textContent=vStatus; sb.className=`px-3 py-1 rounded-full text-[10px] font-bold ${vOk?'status-badge-good':'status-badge-fail'}`;
+
+
+    renderAlertBanner(mStatus, vStatus);
+    updateBarBadges(mStatus, vStatus);
+    updateLimitDisplay();
+    updateCharts(subsysTotals, totalVCM3);
+    document.getElementById('btn-next').disabled=!(mOk && vOk);
+  }
+
+  function renderAlertBanner(mStatus, vStatus){
+    const el=document.getElementById('alert-banner');
+    const mOk=mStatus.includes('✅'), vOk=vStatus.includes('✅');
+    if(mOk && vOk){el.classList.add('hidden');return;}
+    el.classList.remove('hidden');
+    el.className=`rounded-xl px-4 py-3 text-sm font-medium ${!mOk||!vOk?'status-badge-fail':'status-badge-good'}`;
+
+    let msg='';
+    if(!mOk) msg += mStatus + '. ';
+    if(!vOk) msg += vStatus + '. ';
+    el.textContent=msg;
+  }
+
+  function updateCharts(subTotals, totalVCM3){
+    const subLabels = Object.keys(subTotals);
+    const subMass   = subLabels.map(s => subTotals[s].mass);
+    const subColors = subLabels.map(s => SC[s]?.color || '#653f84');
+    const avail     = constraints.available_internal_volume_cm3;
+    const top6      = [...rows].sort((a,b) => b.total_mass_g - a.total_mass_g).slice(0,6);
+
+    // ── Subsystem Mass Donut ──────────────────────────────────────────────────
+    if(!cSubsystem){
+      cSubsystem = new Chart(document.getElementById('chart-subsystem'), {
+        type:'doughnut',
+        data:{labels:subLabels, datasets:[{data:subMass, backgroundColor:subColors, borderWidth:0}]},
+        options:{responsive:true, animation:{duration:200}, cutout:'70%', plugins:{legend:{display:true,position:'bottom',labels:{color:'rgba(215,210,203,0.6)',font:{size:10},boxWidth:10,padding:15}}}}
+      });
+    } else {
+      cSubsystem.data.labels = subLabels;
+      cSubsystem.data.datasets[0].data = subMass;
+      cSubsystem.data.datasets[0].backgroundColor = subColors;
+      cSubsystem.update('none');
+    }
+
+    // ── Volume Usage Donut ───────────────────────────────────────────────────
+    const volUsed = [totalVCM3, Math.max(0, avail - totalVCM3)];
+    if(!cVolume){
+      cVolume = new Chart(document.getElementById('chart-volume'), {
+        type:'doughnut',
+        data:{labels:['Used','Free'], datasets:[{data:volUsed, backgroundColor:['#653f84','rgba(255,255,255,0.05)'], borderWidth:0}]},
+        options:{responsive:true, animation:{duration:200}, cutout:'70%', plugins:{legend:{display:false}}}
+      });
+    } else {
+      cVolume.data.datasets[0].data = volUsed;
+      cVolume.update('none');
+    }
+
+    // ── Top Components Bar ───────────────────────────────────────────────────
+    const topLabels = top6.map(r => r.component_name.split(' ').slice(0,2).join(' '));
+    const topData   = top6.map(r => r.total_mass_g);
+    if(!cTop){
+      cTop = new Chart(document.getElementById('chart-top'), {
+        type:'bar',
+        data:{labels:topLabels, datasets:[{data:topData, backgroundColor:'#c4a0e8', borderRadius:4}]},
+        options:{responsive:true, animation:{duration:200}, plugins:{legend:{display:false}},scales:{x:{ticks:{color:'rgba(215,210,203,0.4)',font:{size:8}}},y:{ticks:{color:'rgba(215,210,203,0.4)',font:{size:8}},grid:{color:'rgba(215,210,203,0.05)'}}}}
+      });
+    } else {
+      cTop.data.labels = topLabels;
+      cTop.data.datasets[0].data = topData;
+      cTop.update('none');
+    }
+  }
+
+  async function saveBudget(silent=false){
+    const btn=document.getElementById('btn-save');
+    if(!silent){btn.textContent='Saving…';btn.disabled=true;}
+    const payload={
+      entries:rows.map(r=>({
+        mission_component_id:r.mission_component_id,
+        quantity:r.quantity,
+        mass_per_unit_g:r.mass_per_unit_g,
+        length_x_mm:r.length_x_mm,
+        width_y_mm:r.width_y_mm,
+        height_z_mm:r.height_z_mm
+      }))
+    };
+    try{
+      const res=await fetch(`${API}/missions/${missionId}/mass-budget/save`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(payload)});
+      if(!res.ok)throw new Error('Save failed');
+      // Also save CubeSat size to constraints
+      await fetch(`${API}/missions/${missionId}/constraints`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({selected_cubesat_size:constraints.selected_cubesat_size,available_internal_volume_cm3:constraints.available_internal_volume_cm3})});
+      if(!silent){
+        btn.textContent='✓ Saved!';btn.classList.add('status-ok');
+        setTimeout(()=>{btn.textContent='💾 Save Mass Budget';btn.disabled=false;btn.classList.remove('status-ok');},2000);
+      }
+    }catch(err){
+      if(!silent) alert(err.message);
+      if(!silent){btn.textContent='💾 Save Mass Budget';btn.disabled=false;}
+    }
+  }
+
+  function goNext(){
+    const btn=document.getElementById('btn-next');
+    btn.textContent='Saving…';btn.disabled=true;
+    saveBudget(true).then(()=>{ window.location.href = '/cost-budget'; });
+  }
+  function logout(){localStorage.clear();window.location.href = '/';}
+</script>
+</body>
+</html>

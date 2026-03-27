@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#241134', secondary: '#653f84', light: '#D7D2CB' },
+          fontFamily: { sans: ['Inter','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; background:#1a0c27; color:#D7D2CB; }
+    .input-field { background:rgba(255,255,255,0.05); border:1.5px solid rgba(215,210,203,0.15); color:#D7D2CB; border-radius:0.625rem; padding:0.6rem 0.9rem; font-size:0.8rem; width:100%; transition:border-color 0.2s; }
+    .input-field:focus { border-color:#653f84; box-shadow:0 0 0 3px rgba(101,63,132,0.25); outline:none; }
+    .input-field::placeholder { color:rgba(215,210,203,0.3); }
+    select.input-field option { background:#241134; }
+    .btn-primary { background:linear-gradient(135deg,#653f84,#241134); color:#fff; border:none; border-radius:0.625rem; padding:0.6rem 1.2rem; font-size:0.8rem; font-weight:600; cursor:pointer; transition:opacity 0.2s; }
+    .btn-primary:hover { opacity:0.85; }
+    .btn-danger { background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; border-radius:0.5rem; padding:0.35rem 0.7rem; font-size:0.72rem; font-weight:600; cursor:pointer; transition:background 0.2s; }
+    .btn-danger:hover { background:rgba(239,68,68,0.25); }
+    .btn-edit { background:rgba(101,63,132,0.2); border:1px solid rgba(101,63,132,0.3); color:#c4a0e8; border-radius:0.5rem; padding:0.35rem 0.7rem; font-size:0.72rem; font-weight:600; cursor:pointer; transition:background 0.2s; }
+    .btn-edit:hover { background:rgba(101,63,132,0.35); }
+    .overlay { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
+    .overlay.open { display:flex; align-items:center; justify-content:center; }
+    .modal { background:#1e1030; border:1.5px solid rgba(101,63,132,0.3); border-radius:1.25rem; padding:2rem; width:100%; max-width:680px; max-height:90vh; overflow-y:auto; }
+    .subsystem-badge { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:0.18rem 0.55rem; border-radius:9999px; }
+    th { text-align:left; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:rgba(215,210,203,0.4); padding:0.75rem 1rem; }
+    td { padding:0.7rem 1rem; font-size:0.8rem; border-top:1px solid rgba(215,210,203,0.06); vertical-align:middle; }
+    tr:hover td { background:rgba(255,255,255,0.02); }
+    ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+  </style>
+  <!-- SheetJS for Excel Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body class="min-h-screen">
+
+  <!-- Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+      <span class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(245,158,11,0.2);color:#fcd34d;font-weight:700;">ADMIN</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="admin-name" class="text-sm" style="color:rgba(215,210,203,0.5);">Loading…</span>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border hover:bg-white/5 transition-colors" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Tabs -->
+  <div class="border-b" style="border-color:rgba(215,210,203,0.08);background:rgba(30,16,48,0.5);">
+    <div class="max-w-7xl mx-auto px-8 flex gap-6">
+      <button id="tab-components" onclick="switchAdminTab('components')" class="py-4 text-sm font-semibold border-b-2 text-white border-secondary transition-colors">Components</button>
+      <button id="tab-codes" onclick="switchAdminTab('codes')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">Invitation Codes</button>
+      <button id="tab-students" onclick="switchAdminTab('students')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">Registered Students</button>
+    </div>
+  </div>
+
+  <!-- VIEWS CONTAINER -->
+  <div id="view-components" class="admin-view block">
+    <!-- Page header -->
+    <div class="px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-white">Component Library</h1>
+          <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Manage all satellite components visible to students.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style="color:rgba(215,210,203,0.4);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
+            <input id="search-comp" type="text" class="input-field" style="padding-left:2.2rem;width:220px;" placeholder="Search components…" oninput="filterCompTable()" />
+          </div>
+          <select id="filter-sub" class="input-field" style="width:140px;" onchange="filterCompTable()">
+            <option value="">All Subsystems</option>
+            <option>ADCS</option><option>CDHS</option><option>EPS</option>
+            <option>COMMS</option><option>Payload</option><option>Structure</option><option>Thermal</option>
+          </select>
+          <button onclick="openCompModal()" class="btn-primary whitespace-nowrap">+ Add Component</button>
+        </div>
+      </div>
+    </div>
+
+  <!-- Alert -->
+  <div id="msg" class="hidden max-w-7xl mx-auto mt-4 px-8">
+    <div id="msg-inner" class="rounded-xl px-4 py-3 text-sm font-medium"></div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="max-w-7xl mx-auto px-8 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="rounded-xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
+      <p class="text-xs" style="color:rgba(215,210,203,0.4);">Total Components</p>
+      <p id="stat-total" class="text-2xl font-bold text-white mt-1">–</p>
+    </div>
+    <div class="rounded-xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
+      <p class="text-xs" style="color:rgba(215,210,203,0.4);">Active</p>
+      <p id="stat-active" class="text-2xl font-bold mt-1" style="color:#6ee7b7;">–</p>
+    </div>
+    <div class="rounded-xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
+      <p class="text-xs" style="color:rgba(215,210,203,0.4);">Subsystems</p>
+      <p id="stat-subs" class="text-2xl font-bold mt-1" style="color:#c4a0e8;">–</p>
+    </div>
+    <div class="rounded-xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
+      <p class="text-xs" style="color:rgba(215,210,203,0.4);">Avg Cost (USD)</p>
+      <p id="stat-cost" class="text-2xl font-bold mt-1" style="color:#fcd34d;">–</p>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="max-w-7xl mx-auto px-8 pb-12">
+    <div class="rounded-2xl overflow-hidden" style="border:1.5px solid rgba(215,210,203,0.09);">
+      <div class="overflow-x-auto">
+        <table class="w-full" style="border-collapse:collapse;">
+          <thead style="background:rgba(36,17,52,0.8);">
+            <tr>
+              <th>Component</th>
+              <th>Subsystem</th>
+              <th>Power (V / mA)</th>
+              <th>Mass (g)</th>
+              <th>Cost (USD)</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="comp-tbody" style="background:rgba(30,16,48,0.6);"></tbody>
+        </table>
+      </div>
+      <div id="table-empty" class="hidden text-center py-12" style="color:rgba(215,210,203,0.3);">
+        <p class="text-sm">No components found. Add your first component above.</p>
+      </div>
+    </div>
+  </div>
+
+    </div> <!-- /view-components -->
+
+  <!-- INVITATION CODES VIEW -->
+  <div id="view-codes" class="admin-view hidden">
+    <div class="px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-white">Invitation Codes</h1>
+          <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Generate codes required for student registration.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="openCodeModal()" class="btn-primary whitespace-nowrap">+ Add Code</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="max-w-7xl mx-auto px-8 py-8 pb-12">
+      <div class="rounded-2xl overflow-hidden" style="border:1.5px solid rgba(215,210,203,0.09);">
+        <table class="w-full" style="border-collapse:collapse;">
+          <thead style="background:rgba(36,17,52,0.8);">
+            <tr>
+              <th>Code</th>
+              <th>Label / Batch</th>
+              <th>Usage (Used / Max)</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="codes-tbody" style="background:rgba(30,16,48,0.6);"></tbody>
+        </table>
+        <div id="codes-empty" class="hidden text-center py-12" style="color:rgba(215,210,203,0.3);">
+          <p class="text-sm">No invitation codes found.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDENTS VIEW -->
+  <div id="view-students" class="admin-view hidden">
+    <div class="px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-white">Registered Students</h1>
+          <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">View and export all student accounts on the platform.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="exportStudents()" class="btn-edit whitespace-nowrap" style="color:#6ee7b7;border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);">📥 Export Excel</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="max-w-7xl mx-auto px-8 py-8 pb-12">
+      <div class="rounded-2xl overflow-hidden" style="border:1.5px solid rgba(215,210,203,0.09);">
+        <table class="w-full" style="border-collapse:collapse;">
+          <thead style="background:rgba(36,17,52,0.8);">
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>School Name</th>
+              <th>Grade</th>
+              <th>Joined Date</th>
+            </tr>
+          </thead>
+          <tbody id="students-tbody" style="background:rgba(30,16,48,0.6);"></tbody>
+        </table>
+        <div id="students-empty" class="hidden text-center py-12" style="color:rgba(215,210,203,0.3);">
+          <p class="text-sm">No students registered yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code Modal Overlay -->
+  <div class="overlay" id="code-modal" onclick="closeCodeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:500px;">
+      <div class="flex items-center justify-between mb-6">
+        <h2 id="code-modal-title" class="text-lg font-bold text-white">Add Invitation Code</h2>
+        <button onclick="closeCodeModal()" style="color:rgba(215,210,203,0.4);font-size:1.4rem;line-height:1;" class="hover:text-white transition-colors">×</button>
+      </div>
+      <form id="code-form" onsubmit="submitCode(event)" class="space-y-4">
+        <input type="hidden" id="c-id" />
+        <div>
+          <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Code (e.g. SPACE2026) *</label>
+          <input type="text" id="c-code" class="input-field" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Label / Notes (Optional)</label>
+          <input type="text" id="c-label" class="input-field" placeholder="e.g. For Dubai High School" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Max Uses</label>
+          <input type="number" id="c-max" class="input-field" min="1" value="1" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Status</label>
+          <select id="c-active" class="input-field">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+        <div id="code-err" class="hidden rounded-lg px-3 py-2.5 text-sm" style="background:rgba(220,38,38,0.15);color:#fca5a5;border:1px solid rgba(220,38,38,0.3);"></div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="closeCodeModal()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors hover:bg-white/5" style="border:1px solid rgba(215,210,203,0.15);color:rgba(215,210,203,0.6);">Cancel</button>
+          <button type="submit" id="btn-submit-code" class="btn-primary flex-1 py-2.5 rounded-xl text-sm">Save Code</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Overlay (Component) -->
+  <div class="overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6">
+        <h2 id="modal-title" class="text-lg font-bold text-white">Add Component</h2>
+        <button onclick="closeModal()" style="color:rgba(215,210,203,0.4);font-size:1.4rem;line-height:1;" class="hover:text-white transition-colors">×</button>
+      </div>
+
+      <form id="comp-form" onsubmit="submitComponent(event)" class="space-y-4">
+        <input type="hidden" id="edit-id" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Component Name *</label>
+            <input type="text" id="f-name" class="input-field" required placeholder="e.g. Nano Star Tracker" />
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Subsystem *</label>
+            <select id="f-subsystem" class="input-field" required>
+              <option value="">Select…</option>
+              <option>ADCS</option><option>CDHS</option><option>EPS</option>
+              <option>COMMS</option><option>Payload</option><option>Structure</option><option>Thermal</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Component Code</label>
+            <input type="text" id="f-code" class="input-field" placeholder="e.g. ADCS-ST-001" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Example Role</label>
+            <input type="text" id="f-role" class="input-field" placeholder="e.g. Attitude determination" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Description</label>
+            <textarea id="f-desc" rows="2" class="input-field resize-none" placeholder="Brief description of the component…"></textarea>
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Dimensions (mm)</label>
+            <input type="text" id="f-dims" class="input-field" placeholder="e.g. 50×50×30" />
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Mass (g)</label>
+            <input type="number" id="f-mass" class="input-field" placeholder="e.g. 85" step="0.1" min="0" />
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Voltage (V)</label>
+            <input type="number" id="f-voltage" class="input-field" placeholder="e.g. 5.0" step="0.1" min="0" />
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Current (mA)</label>
+            <input type="number" id="f-current" class="input-field" placeholder="e.g. 250" step="0.1" min="0" />
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Data Size</label>
+            <input type="text" id="f-datasize" class="input-field" placeholder="e.g. 12 KB/s" />
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Cost (USD)</label>
+            <input type="number" id="f-cost" class="input-field" placeholder="e.g. 4500" step="0.01" min="0" />
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Temperature Range</label>
+            <input type="text" id="f-temp" class="input-field" placeholder="e.g. -20 to +60°C" />
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Active</label>
+            <select id="f-active" class="input-field">
+              <option value="true">Yes – Visible to students</option>
+              <option value="false">No – Hidden</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Key Specs</label>
+            <textarea id="f-specs" rows="2" class="input-field resize-none" placeholder="e.g. Accuracy: 2 arcsec, Update rate: 4 Hz"></textarea>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Image URL</label>
+            <input type="url" id="f-image" class="input-field" placeholder="https://…/image.png" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Notes</label>
+            <textarea id="f-notes" rows="2" class="input-field resize-none" placeholder="Internal admin notes…"></textarea>
+          </div>
+        </div>
+
+        <div id="form-err" class="hidden rounded-lg px-3 py-2.5 text-sm" style="background:rgba(220,38,38,0.15);color:#fca5a5;border:1px solid rgba(220,38,38,0.3);"></div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="closeModal()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors hover:bg-white/5" style="border:1px solid rgba(215,210,203,0.15);color:rgba(215,210,203,0.6);">Cancel</button>
+          <button type="submit" id="btn-submit" class="btn-primary flex-1 py-2.5 rounded-xl text-sm">Save Component</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin + '/api';
+    const token = localStorage.getItem('sp_token');
+    const role = localStorage.getItem('sp_role');
+    if (!token || role !== 'admin') window.location.href = '/';
+
+
+    // ── Tab Management ────────────────────────────────────────────────────────
+    let currentTab = 'components';
+    function switchAdminTab(tab) {
+      document.getElementById('view-components').classList.toggle('hidden', tab !== 'components');
+      document.getElementById('view-components').classList.toggle('block', tab === 'components');
+      document.getElementById('view-codes').classList.toggle('hidden', tab !== 'codes');
+      document.getElementById('view-codes').classList.toggle('block', tab === 'codes');
+      document.getElementById('view-students').classList.toggle('hidden', tab !== 'students');
+      document.getElementById('view-students').classList.toggle('block', tab === 'students');
+
+      ['components', 'codes', 'students'].forEach(t => {
+        const el = document.getElementById('tab-' + t);
+        if (t === tab) {
+          el.classList.add('border-secondary', 'text-white');
+          el.classList.remove('border-transparent', 'text-gray-400');
+        } else {
+          el.classList.remove('border-secondary', 'text-white');
+          el.classList.add('border-transparent', 'text-gray-400');
+        }
+      });
+      currentTab = tab;
+      if (tab === 'codes') loadCodes();
+      if (tab === 'students') loadStudents();
+    }
+
+    // ── Invitation Codes ──────────────────────────────────────────────────────
+    let allCodes = [];
+    async function loadCodes() {
+      const res = await fetch(`${API}/invitation-codes`, { headers: { Authorization:`Bearer ${token}` } });
+      allCodes = await res.json();
+      renderCodes();
+    }
+    
+    function renderCodes() {
+      const tbody = document.getElementById('codes-tbody');
+      const empty = document.getElementById('codes-empty');
+      if (!allCodes.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      tbody.innerHTML = allCodes.map(c => `
+        <tr>
+          <td class="font-bold text-white tracking-widest">${c.code}</td>
+          <td class="text-sm">${c.label || '–'}</td>
+          <td class="text-sm"><span class="font-bold text-white">${c.uses_count}</span> / ${c.max_uses}</td>
+          <td>
+            <span class="subsystem-badge" style="background:${c.is_active?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.15)'};color:${c.is_active?'#6ee7b7':'#fca5a5'};">
+              ${c.is_active?'Active':'Inactive'}
+            </span>
+          </td>
+          <td>
+            <div class="flex gap-2">
+              <button class="btn-edit" onclick='openEditCodeModal(${JSON.stringify(c).replace(/'/g, "&apos;")})'>Edit</button>
+              <button class="btn-danger" onclick="deleteCode('${c.id}', '${c.code}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openCodeModal() {
+      document.getElementById('code-modal-title').textContent = 'Add Code';
+      document.getElementById('btn-submit-code').textContent = 'Save Code';
+      document.getElementById('code-form').reset();
+      document.getElementById('c-id').value = '';
+      document.getElementById('code-err').classList.add('hidden');
+      document.getElementById('code-modal').classList.add('open');
+    }
+    
+    function openEditCodeModal(c) {
+      document.getElementById('code-modal-title').textContent = 'Edit Code';
+      document.getElementById('btn-submit-code').textContent = 'Save Changes';
+      document.getElementById('c-id').value = c.id;
+      document.getElementById('c-code').value = c.code;
+      document.getElementById('c-label').value = c.label || '';
+      document.getElementById('c-max').value = c.max_uses;
+      document.getElementById('c-active').value = c.is_active ? 'true' : 'false';
+      document.getElementById('code-err').classList.add('hidden');
+      document.getElementById('code-modal').classList.add('open');
+    }
+
+    function closeCodeModal(e) {
+      if (e && e.target !== document.getElementById('code-modal')) return;
+      document.getElementById('code-modal').classList.remove('open');
+    }
+
+    async function submitCode(e) {
+      e.preventDefault();
+      const err = document.getElementById('code-err');
+      err.classList.add('hidden');
+      const id = document.getElementById('c-id').value;
+      const payload = {
+        code: document.getElementById('c-code').value.trim(),
+        label: document.getElementById('c-label').value.trim() || null,
+        max_uses: parseInt(document.getElementById('c-max').value),
+        is_active: document.getElementById('c-active').value === 'true'
+      };
+      
+      try {
+        const url = id ? `${API}/invitation-codes/${id}` : `${API}/invitation-codes`;
+        const method = id ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method, headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to save code');
+        closeCodeModal();
+        showMsg('Code saved.', false);
+        loadCodes();
+      } catch (e) {
+        err.textContent = e.message; err.classList.remove('hidden');
+      }
+    }
+
+    async function deleteCode(id, code) {
+      if (!confirm(`Delete code "${code}"?`)) return;
+      try {
+        const res = await fetch(`${API}/invitation-codes/${id}`, { method: 'DELETE', headers: { Authorization:`Bearer ${token}` } });
+        if (!res.ok && res.status !== 204) throw new Error('Delete failed');
+        showMsg('Code deleted.', false);
+        loadCodes();
+      } catch (e) { showMsg(e.message); }
+    }
+
+    // ── Students ──────────────────────────────────────────────────────────────
+    let allStudents = [];
+    async function loadStudents() {
+      const res = await fetch(`${API}/auth/students`, { headers: { Authorization:`Bearer ${token}` } });
+      allStudents = await res.json();
+      renderStudents();
+    }
+    
+    function renderStudents() {
+      const tbody = document.getElementById('students-tbody');
+      const empty = document.getElementById('students-empty');
+      if (!allStudents.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      tbody.innerHTML = allStudents.map(s => {
+        const d = new Date(s.created_at).toLocaleDateString();
+        return `
+        <tr>
+          <td class="font-semibold text-white">${s.full_name}</td>
+          <td class="text-sm" style="color:rgba(215,210,203,0.7);">${s.email}</td>
+          <td class="text-sm">${s.school_name || '–'}</td>
+          <td class="text-sm">${s.grade || '–'}</td>
+          <td class="text-sm">${d}</td>
+        </tr>
+      `}).join('');
+    }
+
+    function exportStudents() {
+      if (!allStudents.length) return showMsg('No students to export');
+      const data = allStudents.map(s => ({
+        "Full Name": s.full_name,
+        "Email": s.email,
+        "School Name": s.school_name || '',
+        "Grade": s.grade || '',
+        "Joined Date": new Date(s.created_at).toLocaleDateString()
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Students");
+      XLSX.writeFile(wb, "SpacePoint_Students.xlsx");
+    }
+
+    let allComponents = [];
+    let editingId = null;
+
+    const subsysColors = {
+      ADCS:{ bg:'rgba(59,130,246,0.2)',color:'#93c5fd' },
+      CDHS:{ bg:'rgba(16,185,129,0.2)',color:'#6ee7b7' },
+      EPS:{ bg:'rgba(245,158,11,0.2)',color:'#fcd34d' },
+      COMMS:{ bg:'rgba(239,68,68,0.2)',color:'#fca5a5' },
+      Payload:{ bg:'rgba(139,92,246,0.2)',color:'#c4b5fd' },
+      Structure:{ bg:'rgba(156,163,175,0.2)',color:'#d1d5db' },
+      Thermal:{ bg:'rgba(236,72,153,0.2)',color:'#f9a8d4' },
+    };
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    async function init() {
+      try {
+        const me = await fetch(`${API}/auth/me`, { headers: { Authorization:`Bearer ${token}` } });
+        const user = await me.json();
+        document.getElementById('admin-name').textContent = user.full_name;
+        await loadComponents();
+      } catch { logout(); }
+    }
+    init();
+
+    async function loadComponents() {
+      // Admin token — fetch all including inactive by passing auth
+      const res = await fetch(`${API}/components`, { headers: { Authorization:`Bearer ${token}` } });
+      allComponents = await res.json();
+      updateStats();
+      filterCompTable();
+    }
+
+    function updateStats() {
+      document.getElementById('stat-total').textContent = allComponents.length;
+      document.getElementById('stat-active').textContent = allComponents.filter(c=>c.is_active).length;
+      document.getElementById('stat-subs').textContent = new Set(allComponents.map(c=>c.subsystem)).size;
+      const costs = allComponents.filter(c=>c.assumed_cost_usd).map(c=>c.assumed_cost_usd);
+      document.getElementById('stat-cost').textContent = costs.length ? Math.round(costs.reduce((a,b)=>a+b,0)/costs.length).toLocaleString() : '–';
+    }
+
+    // ── Table ─────────────────────────────────────────────────────────────────
+    function filterCompTable() {
+      const searchComp = document.getElementById('search-comp').value.toLowerCase();
+      const sub = document.getElementById('filter-sub').value;
+      let filtered = allComponents;
+      if (sub) filtered = filtered.filter(c=>c.subsystem===sub);
+      if (searchComp) filtered = filtered.filter(c=>c.component_name.toLowerCase().includes(searchComp)||c.subsystem.toLowerCase().includes(searchComp));
+      renderTable(filtered);
+    }
+
+    function renderTable(list) {
+      const tbody = document.getElementById('comp-tbody');
+      const empty = document.getElementById('table-empty');
+      if (!list.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      const sc = subsysColors;
+      tbody.innerHTML = list.map(c => {
+        const bc = sc[c.subsystem]||{bg:'rgba(101,63,132,0.3)',color:'#c4a0e8'};
+        return `
+        <tr>
+          <td>
+            <div class="flex items-center gap-3">
+              <img src="${c.image_url||'https://placehold.co/100x100/241134/653f84?text=?'}" 
+                   onerror="this.src='https://placehold.co/100x100/241134/653f84?text=?'" 
+                   class="w-10 h-10 rounded-lg object-cover shrink-0" style="border:1px solid rgba(215,210,203,0.1);" />
+              <div>
+                <p class="font-semibold text-white text-sm">${c.component_name}</p>
+                <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.4);">${c.example_role||'–'}</p>
+              </div>
+            </div>
+          </td>
+          <td><span class="subsystem-badge" style="background:${bc.bg};color:${bc.color};">${c.subsystem}</span></td>
+          <td class="text-xs"><span class="text-white font-medium">${c.voltage_v??'–'}V</span> / ${c.current_ma??'–'}mA</td>
+          <td class="text-xs text-white">${c.scaled_mass_g??'–'}g</td>
+          <td class="text-xs font-medium" style="color:#fcd34d;">${c.assumed_cost_usd ? '$'+Number(c.assumed_cost_usd).toLocaleString() : '–'}</td>
+          <td>
+            <span class="subsystem-badge" style="background:${c.is_active?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.15)'};color:${c.is_active?'#6ee7b7':'#fca5a5'};">
+              ${c.is_active?'Active':'Hidden'}
+            </span>
+          </td>
+          <td>
+            <div class="flex gap-2">
+              <button class="btn-edit" onclick="openEditModal(${JSON.stringify(c).replace(/"/g,'&quot;')})">Edit</button>
+              <button class="btn-danger" onclick="deleteComponent('${c.id}', '${c.component_name}')">Delete</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ── Modal ─────────────────────────────────────────────────────────────────
+    function openCompModal() {
+      editingId = null;
+      document.getElementById('modal-title').textContent = 'Add Component';
+      document.getElementById('btn-submit').textContent = 'Add Component';
+      document.getElementById('comp-form').reset();
+      document.getElementById('edit-id').value = '';
+      document.getElementById('f-active').value = 'true';
+      document.getElementById('form-err').classList.add('hidden');
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+
+    function openEditModal(comp) {
+      editingId = comp.id;
+      document.getElementById('modal-title').textContent = 'Edit Component';
+      document.getElementById('btn-submit').textContent = 'Save Changes';
+      document.getElementById('edit-id').value = comp.id;
+      document.getElementById('f-name').value = comp.component_name || '';
+      document.getElementById('f-subsystem').value = comp.subsystem || '';
+      document.getElementById('f-code').value = comp.component_code || '';
+      document.getElementById('f-role').value = comp.example_role || '';
+      document.getElementById('f-desc').value = comp.scaled_description || '';
+      document.getElementById('f-dims').value = comp.scaled_dimensions_mm || '';
+      document.getElementById('f-mass').value = comp.scaled_mass_g ?? '';
+      document.getElementById('f-voltage').value = comp.voltage_v ?? '';
+      document.getElementById('f-current').value = comp.current_ma ?? '';
+      document.getElementById('f-datasize').value = comp.data_size || '';
+      document.getElementById('f-cost').value = comp.assumed_cost_usd ?? '';
+      document.getElementById('f-temp').value = comp.temperature_range || '';
+      document.getElementById('f-active').value = comp.is_active ? 'true' : 'false';
+      document.getElementById('f-specs').value = comp.key_specs || '';
+      document.getElementById('f-image').value = comp.image_url || '';
+      document.getElementById('f-notes').value = comp.notes || '';
+      document.getElementById('form-err').classList.add('hidden');
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+
+    function closeModal(e) {
+      if (e && e.target !== document.getElementById('modal-overlay')) return;
+      document.getElementById('modal-overlay').classList.remove('open');
+    }
+
+    // ── Submit ────────────────────────────────────────────────────────────────
+    async function submitComponent(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('form-err');
+      errEl.classList.add('hidden');
+      const btn = document.getElementById('btn-submit');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+
+      const payload = {
+        component_name: document.getElementById('f-name').value.trim(),
+        subsystem: document.getElementById('f-subsystem').value,
+        component_code: document.getElementById('f-code').value.trim() || null,
+        example_role: document.getElementById('f-role').value.trim() || null,
+        scaled_description: document.getElementById('f-desc').value.trim() || null,
+        scaled_dimensions_mm: document.getElementById('f-dims').value.trim() || null,
+        scaled_mass_g: parseFloatOrNull('f-mass'),
+        voltage_v: parseFloatOrNull('f-voltage'),
+        current_ma: parseFloatOrNull('f-current'),
+        data_size: document.getElementById('f-datasize').value.trim() || null,
+        assumed_cost_usd: parseFloatOrNull('f-cost'),
+        temperature_range: document.getElementById('f-temp').value.trim() || null,
+        is_active: document.getElementById('f-active').value === 'true',
+        key_specs: document.getElementById('f-specs').value.trim() || null,
+        image_url: document.getElementById('f-image').value.trim() || null,
+        notes: document.getElementById('f-notes').value.trim() || null,
+      };
+
+      try {
+        const url = editingId ? `${API}/components/${editingId}` : `${API}/components`;
+        const method = editingId ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Operation failed');
+        document.getElementById('modal-overlay').classList.remove('open');
+        showMsg(editingId ? 'Component updated.' : 'Component added.', false);
+        await loadComponents();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = editingId ? 'Save Changes' : 'Add Component';
+      }
+    }
+
+    function parseFloatOrNull(id) {
+      const v = document.getElementById(id).value;
+      return v === '' ? null : parseFloat(v);
+    }
+
+    // ── Delete ────────────────────────────────────────────────────────────────
+    async function deleteComponent(id, name) {
+      if (!confirm(`Delete "${name}"? This will also remove it from all student missions.`)) return;
+      try {
+        const res = await fetch(`${API}/components/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization:`Bearer ${token}` }
+        });
+        if (!res.ok && res.status !== 204) throw new Error('Delete failed');
+        showMsg(`"${name}" deleted.`, false);
+        await loadComponents();
+      } catch (err) { showMsg(err.message); }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function showMsg(text, isError=true) {
+      const wrap = document.getElementById('msg');
+      const el = document.getElementById('msg-inner');
+      wrap.classList.remove('hidden');
+      el.textContent = text;
+      el.style.background = isError ? 'rgba(220,38,38,0.15)' : 'rgba(16,185,129,0.15)';
+      el.style.color = isError ? '#fca5a5' : '#6ee7b7';
+      el.style.border = isError ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(16,185,129,0.3)';
+      el.style.borderRadius = '0.75rem';
+      el.style.padding = '0.75rem 1rem';
+      setTimeout(() => wrap.classList.add('hidden'), 4000);
+    }
+
+    function logout() { localStorage.clear(); window.location.href = '/'; }
+  </script>
+</body>
+</html>

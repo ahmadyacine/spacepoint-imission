@@ -1,0 +1,75 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models.user import User
+from app.schemas.auth import UserRegister, UserLogin, TokenResponse, UserOut, UserUpdate
+from app.utils.auth import hash_password, verify_password, create_access_token
+from app.utils.dependencies import get_current_user
+from typing import List
+from app.models.invitation_code import InvitationCode
+
+router = APIRouter(prefix="/auth", tags=["Auth"])
+
+@router.post("/register", response_model=UserOut, status_code=201)
+def register(data: UserRegister, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.email == data.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+        
+    # Check invitation code
+    invitation = db.query(InvitationCode).filter(InvitationCode.code == data.invitation_code).first()
+    if not invitation:
+        raise HTTPException(status_code=400, detail="Invalid invitation code")
+    if not invitation.is_active:
+        raise HTTPException(status_code=400, detail="This invitation code is inactive")
+    if invitation.uses_count >= invitation.max_uses:
+        raise HTTPException(status_code=400, detail="This invitation code has reached its usage limit")
+        
+    invitation.uses_count += 1
+
+    user = User(
+        full_name=data.full_name,
+        email=data.email,
+        hashed_password=hash_password(data.password),
+        role="student",
+        school_name=data.school_name,
+        grade=data.grade
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.post("/login", response_model=TokenResponse)
+def login(data: UserLogin, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
+    if not user or not verify_password(data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is inactive")
+    token = create_access_token({"sub": str(user.id), "role": user.role})
+    return {"access_token": token, "token_type": "bearer", "role": user.role}
+
+@router.get("/me", response_model=UserOut)
+def me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@router.put("/me", response_model=UserOut)
+def update_me(data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if data.full_name is not None:
+        current_user.full_name = data.full_name
+    if data.school_name is not None:
+        current_user.school_name = data.school_name
+    if data.grade is not None:
+        current_user.grade = data.grade
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+@router.get("/students", response_model=List[UserOut])
+def get_students(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    students = db.query(User).filter(User.role == "student").order_by(User.created_at.desc()).all()
+    return students
+

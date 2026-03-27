@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Sign In</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#241134',
+            secondary: '#653f84',
+            light: '#D7D2CB',
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .card-glow { box-shadow: 0 0 60px rgba(101,63,132,0.25); }
+    .input-field {
+      background: rgba(255,255,255,0.06);
+      border: 1.5px solid rgba(215,210,203,0.15);
+      color: #D7D2CB;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus { border-color: #653f84; box-shadow: 0 0 0 3px rgba(101,63,132,0.25); outline: none; }
+    .input-field::placeholder { color: rgba(215,210,203,0.4); }
+    .btn-primary {
+      background: linear-gradient(135deg, #653f84, #241134);
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .tab-active { border-bottom: 2px solid #653f84; color: #D7D2CB; }
+    .star { position: absolute; border-radius: 50%; background: white; animation: twinkle var(--dur, 3s) ease-in-out infinite; }
+    @keyframes twinkle { 0%,100%{opacity:0.2;} 50%{opacity:1;} }
+    .form-section { display: none; }
+    .form-section.active { display: block; }
+  </style>
+</head>
+<body class="min-h-screen bg-primary flex items-center justify-center p-4 relative overflow-hidden">
+
+  <!-- Starfield background -->
+  <div id="stars" class="absolute inset-0 pointer-events-none z-0"></div>
+
+  <!-- Nebula glow -->
+  <div class="absolute inset-0 pointer-events-none z-0">
+    <div class="absolute top-1/4 left-1/4 w-96 h-96 rounded-full" style="background:radial-gradient(circle,rgba(101,63,132,0.18) 0%,transparent 70%);filter:blur(60px);"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full" style="background:radial-gradient(circle,rgba(101,63,132,0.12) 0%,transparent 70%);filter:blur(60px);"></div>
+  </div>
+
+  <div class="relative z-10 w-full max-w-5xl flex flex-col lg:flex-row gap-0 rounded-2xl overflow-hidden card-glow">
+
+    <!-- Left branding panel -->
+    <div class="flex-1 p-10 flex flex-col justify-between" style="background:linear-gradient(160deg,#1a0c27 0%,#241134 60%,#1c0f2e 100%);">
+      <div>
+        <!-- Logo area -->
+        <div class="flex items-center gap-3 mb-10">
+          <img src="/static/logo.png" alt="SpacePoint" class="h-10 w-auto object-contain" style="filter:brightness(1.05);"/>
+        </div>
+
+        <!-- Tagline -->
+        <h1 class="text-3xl font-bold text-white leading-tight mb-4">Design your satellite<br/>mission step by step.</h1>
+        <p class="text-sm leading-relaxed mb-8" style="color:rgba(215,210,203,0.65);">A guided educational platform where students design, simulate, and budget a full satellite mission — component by component.</p>
+
+        <!-- Journey steps teaser -->
+        <div class="space-y-3">
+          <p class="text-xs font-semibold uppercase tracking-widest mb-4" style="color:#9b6fc4;">Your Mission Journey</p>
+          <div class="flex items-center gap-3">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:#653f84;color:#fff;">1</div>
+            <span class="text-sm" style="color:rgba(215,210,203,0.75);">Create Mission</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:rgba(101,63,132,0.35);color:rgba(215,210,203,0.5);">2</div>
+            <span class="text-sm" style="color:rgba(215,210,203,0.45);">Choose Components</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:rgba(101,63,132,0.2);color:rgba(215,210,203,0.3);">3</div>
+            <span class="text-sm" style="color:rgba(215,210,203,0.3);">CONOPS & Budgets</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:rgba(101,63,132,0.12);color:rgba(215,210,203,0.2);">4</div>
+            <span class="text-sm" style="color:rgba(215,210,203,0.2);">Mission Dashboard</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 border-t pt-6" style="border-color:rgba(215,210,203,0.1);">
+        <p class="text-xs" style="color:rgba(215,210,203,0.35);">© 2026 SpacePoint &nbsp;·&nbsp; Educational Platform</p>
+      </div>
+    </div>
+
+    <!-- Right auth panel -->
+    <div class="w-full lg:w-[420px] p-10 flex flex-col justify-center" style="background:#1e1030;">
+
+      <!-- Tabs -->
+      <div class="flex border-b mb-8" style="border-color:rgba(215,210,203,0.12);">
+        <button id="tab-signin" onclick="showTab('signin')"
+          class="tab-active flex-1 py-3 text-sm font-semibold text-center transition-all">
+          Sign In
+        </button>
+        <button id="tab-signup" onclick="showTab('signup')"
+          class="flex-1 py-3 text-sm font-semibold text-center transition-all" style="color:rgba(215,210,203,0.45);">
+          Sign Up
+        </button>
+      </div>
+
+      <!-- Error/success messages -->
+      <div id="auth-msg" class="hidden rounded-lg px-4 py-3 text-sm mb-4 font-medium"></div>
+
+      <!-- Sign In Form -->
+      <form id="form-signin" class="form-section active space-y-5" onsubmit="handleLogin(event)">
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.55);">Email</label>
+          <input type="email" id="signin-email" required placeholder="you@university.edu"
+            class="input-field w-full rounded-xl px-4 py-3 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.55);">Password</label>
+          <input type="password" id="signin-password" required placeholder="••••••••"
+            class="input-field w-full rounded-xl px-4 py-3 text-sm" />
+        </div>
+        <button type="submit" id="btn-signin"
+          class="btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm tracking-wide mt-2">
+          Sign In &nbsp;→
+        </button>
+        <p class="text-center text-xs mt-4" style="color:rgba(215,210,203,0.35);">
+          New to SpacePoint? <button type="button" onclick="showTab('signup')" class="underline" style="color:#9b6fc4;">Create an account</button>
+        </p>
+      </form>
+
+      <!-- Sign Up Form -->
+      <form id="form-signup" class="form-section space-y-4" onsubmit="handleRegister(event)">
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.55);">Full Name</label>
+          <input type="text" id="signup-name" required placeholder="Your full name"
+            class="input-field w-full rounded-xl px-4 py-3 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.55);">Email</label>
+          <input type="email" id="signup-email" required placeholder="you@university.edu"
+            class="input-field w-full rounded-xl px-4 py-3 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.55);">Password</label>
+          <input type="password" id="signup-password" required placeholder="Min. 6 characters"
+            class="input-field w-full rounded-xl px-4 py-3 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.55);">Confirm Password</label>
+          <input type="password" id="signup-confirm" required placeholder="Repeat password"
+            class="input-field w-full rounded-xl px-4 py-3 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.55);">Invitation Code</label>
+          <input type="text" id="signup-code" required placeholder="Have a code? Enter it here"
+            class="input-field w-full rounded-xl px-4 py-3 text-sm" />
+        </div>
+        <button type="submit" id="btn-signup"
+          class="btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm tracking-wide mt-2">
+          Create Account &nbsp;→
+        </button>
+        <p class="text-center text-xs mt-3" style="color:rgba(215,210,203,0.35);">
+          Already have an account? <button type="button" onclick="showTab('signin')" class="underline" style="color:#9b6fc4;">Sign in</button>
+        </p>
+      </form>
+
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin + '/api';
+
+    // ── Starfield ─────────────────────────────────────────────────────────────
+    const starsEl = document.getElementById('stars');
+    for (let i = 0; i < 120; i++) {
+      const s = document.createElement('div');
+      const size = Math.random() * 2.5 + 0.5;
+      s.className = 'star';
+      s.style.cssText = `
+        width:${size}px; height:${size}px;
+        top:${Math.random()*100}%;
+        left:${Math.random()*100}%;
+        --dur:${(Math.random()*4+2).toFixed(1)}s;
+        animation-delay:${(Math.random()*5).toFixed(1)}s;
+        opacity:${Math.random()*0.5+0.1};
+      `;
+      starsEl.appendChild(s);
+    }
+
+    // ── Tab switching ─────────────────────────────────────────────────────────
+    function showTab(tab) {
+      document.getElementById('form-signin').classList.toggle('active', tab === 'signin');
+      document.getElementById('form-signup').classList.toggle('active', tab === 'signup');
+      document.getElementById('tab-signin').classList.toggle('tab-active', tab === 'signin');
+      document.getElementById('tab-signup').classList.toggle('tab-active', tab === 'signup');
+      document.getElementById('tab-signin').style.color = tab === 'signin' ? '#D7D2CB' : 'rgba(215,210,203,0.45)';
+      document.getElementById('tab-signup').style.color = tab === 'signup' ? '#D7D2CB' : 'rgba(215,210,203,0.45)';
+      clearMsg();
+    }
+
+    // ── Messages ──────────────────────────────────────────────────────────────
+    function showMsg(text, isError = true) {
+      const el = document.getElementById('auth-msg');
+      el.textContent = text;
+      el.classList.remove('hidden');
+      el.style.background = isError ? 'rgba(220,38,38,0.15)' : 'rgba(16,185,129,0.15)';
+      el.style.color = isError ? '#fca5a5' : '#6ee7b7';
+      el.style.border = isError ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(16,185,129,0.3)';
+    }
+    function clearMsg() { document.getElementById('auth-msg').classList.add('hidden'); }
+
+    // ── Login ─────────────────────────────────────────────────────────────────
+    async function handleLogin(e) {
+      e.preventDefault();
+      clearMsg();
+      const btn = document.getElementById('btn-signin');
+      btn.textContent = 'Signing in…';
+      btn.disabled = true;
+
+      const body = new URLSearchParams();
+      body.append('username', document.getElementById('signin-email').value);
+      body.append('password', document.getElementById('signin-password').value);
+
+      try {
+        const res = await fetch(`${API}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('signin-email').value,
+            password: document.getElementById('signin-password').value,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Login failed');
+
+        localStorage.setItem('sp_token', data.access_token);
+        localStorage.setItem('sp_role', data.role);
+
+        if (data.role === 'admin') {
+          window.location.href = '/admin';
+        } else {
+          window.location.href = '/mission';
+        }
+      } catch (err) {
+        showMsg(err.message);
+        btn.textContent = 'Sign In →';
+        btn.disabled = false;
+      }
+    }
+
+    // ── Register ──────────────────────────────────────────────────────────────
+    async function handleRegister(e) {
+      e.preventDefault();
+      clearMsg();
+      const pwd = document.getElementById('signup-password').value;
+      const confirm = document.getElementById('signup-confirm').value;
+      if (pwd !== confirm) return showMsg('Passwords do not match');
+      if (pwd.length < 6) return showMsg('Password must be at least 6 characters');
+
+      const btn = document.getElementById('btn-signup');
+      btn.textContent = 'Creating account…';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`${API}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: document.getElementById('signup-name').value,
+            email: document.getElementById('signup-email').value,
+            password: pwd,
+            invitation_code: document.getElementById('signup-code').value.trim()
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Registration failed');
+
+        showMsg('Account created! Please sign in.', false);
+        showTab('signin');
+      } catch (err) {
+        showMsg(err.message);
+      } finally {
+        btn.textContent = 'Create Account →';
+        btn.disabled = false;
+      }
+    }
+
+    // ── Auto-redirect if already logged in ────────────────────────────────────
+    const token = localStorage.getItem('sp_token');
+    if (token) {
+      const role = localStorage.getItem('sp_role');
+      window.location.href = role === 'admin' ? '/admin' : '/mission';
+    }
+  </script>
+</body>
+</html>

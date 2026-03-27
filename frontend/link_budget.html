@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Link Budget</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors:{ primary:'#241134', secondary:'#653f84', light:'#D7D2CB' }, fontFamily:{ sans:['Inter','sans-serif'] } } }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; background:#1a0c27; color:#D7D2CB; }
+    .card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; }
+    .field-input { background:rgba(255,255,255,0.07); border:1px solid rgba(215,210,203,0.14); color:#D7D2CB; border-radius:0.6rem; padding:0.55rem 0.75rem; font-size:0.85rem; width:100%; transition:border-color 0.2s; }
+    .field-input:focus { border-color:#653f84; outline:none; box-shadow:0 0 0 2px rgba(101,63,132,0.2); }
+    .unit-label { font-size:0.72rem; font-weight:600; color:rgba(215,210,203,0.4); padding-left:0.4rem; white-space:nowrap; }
+    .step-active { background:#653f84; color:#fff; }
+    .step-done   { background:rgba(101,63,132,0.5); }
+    .step-future { background:rgba(101,63,132,0.12); color:rgba(215,210,203,0.25); }
+    .btn-primary { background:linear-gradient(135deg,#653f84,#241134); color:#fff; border:none; border-radius:0.75rem; padding:0.7rem 1.5rem; font-size:0.85rem; font-weight:600; cursor:pointer; transition:opacity 0.2s,transform 0.1s; }
+    .btn-primary:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.35; cursor:not-allowed; }
+    .btn-sec { background:rgba(255,255,255,0.05); border:1px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.7); border-radius:0.75rem; padding:0.7rem 1.25rem; font-size:0.85rem; font-weight:600; cursor:pointer; }
+    .btn-sec:hover { background:rgba(255,255,255,0.09); }
+    .band-pill { background:rgba(255,255,255,0.06); border:1.5px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.6); border-radius:0.6rem; padding:0.45rem 1.1rem; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.15s; }
+    .band-pill.active { background:linear-gradient(135deg,#653f84,#4a2a6e); border-color:#9b6fc4; color:#fff; }
+    .calc-row:hover { background:rgba(255,255,255,0.018); }
+    .result-margin { font-size:3.5rem; font-weight:800; letter-spacing:-0.02em; line-height:1; }
+    .status-good { color:#6ee7b7; }
+    .status-weak { color:#fcd34d; }
+    .status-fail { color:#fca5a5; }
+    .status-badge-good { background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.35); }
+    .status-badge-weak { background:rgba(245,158,11,0.2); color:#fcd34d; border:1px solid rgba(245,158,11,0.35); }
+    .status-badge-fail { background:rgba(239,68,68,0.2);  color:#fca5a5; border:1px solid rgba(239,68,68,0.35); }
+    .formula-box { background:rgba(101,63,132,0.1); border:1px solid rgba(101,63,132,0.25); border-radius:0.75rem; padding:1rem 1.25rem; }
+    details summary { cursor:pointer; user-select:none; }
+    ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between shrink-0" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+      <span id="mission-badge" class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">Loading…</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="window.location.href = '/power-budget'" class="btn-sec text-xs px-3 py-1.5">← Power Budget</button>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Stepper -->
+  <div class="px-6 py-4 shrink-0" style="background:rgba(36,17,52,0.5);">
+    <div class="max-w-6xl mx-auto flex items-center gap-0" id="stepper"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+      <!-- Section A: Mission Summary Bar -->
+      <div id="sec-mission" class="card px-6 py-5 flex flex-wrap gap-6 items-center"></div>
+
+      <!-- Alert -->
+      <div id="alert-banner" class="hidden rounded-xl px-4 py-3 text-sm font-medium"></div>
+
+      <!-- Two-column layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+        <!-- Section B: Input Card (left) -->
+        <div class="lg:col-span-2 space-y-5">
+          <div class="card p-6 space-y-5">
+            <p class="text-sm font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">📡 Link Configuration</p>
+
+            <!-- Band Selector -->
+            <div>
+              <label class="block text-xs font-semibold mb-2" style="color:rgba(215,210,203,0.5);">Band / Profile</label>
+              <div id="band-pills" class="flex gap-2 flex-wrap"></div>
+            </div>
+
+            <!-- Fields -->
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Downlink Frequency</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="dl-freq" class="field-input" step="0.1" min="0" placeholder="e.g. 437" oninput="onInputChange()" />
+                  <span class="unit-label">MHz</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Uplink Frequency</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="ul-freq" class="field-input" step="0.1" min="0" placeholder="e.g. 145" oninput="onInputChange()" />
+                  <span class="unit-label">MHz</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Satellite Antenna Gain</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="gain" class="field-input" step="0.1" placeholder="e.g. 2" oninput="onInputChange()" />
+                  <span class="unit-label">dBi</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Data Rate</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="data-rate" class="field-input" step="0.1" min="0.001" placeholder="e.g. 9.6" oninput="onInputChange()" />
+                  <span class="unit-label">kbps</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Required Signal Quality</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="req-snr" class="field-input" step="0.1" min="0" placeholder="e.g. 10" oninput="onInputChange()" />
+                  <span class="unit-label">dB</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Assumed Distance</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="distance-km" class="field-input" step="1" min="0" placeholder="e.g. 500" oninput="onInputChange()" />
+                  <span class="unit-label">km</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Transmit Power</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="tx-power" class="field-input" step="0.1" placeholder="e.g. 30" oninput="onInputChange()" />
+                  <span class="unit-label">dBm</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Formula helper (collapsible) -->
+            <details class="mt-2">
+              <summary class="text-xs font-semibold" style="color:#c4a0e8;">📐 Show Formulas</summary>
+              <div class="formula-box mt-3 space-y-1.5 text-xs" style="color:rgba(215,210,203,0.6);">
+                <p>🔹 EIRP = Tx Power + Antenna Gain</p>
+                <p>🔹 FSPL = 20·log(d) + 20·log(f) − 147.55</p>
+                <p>🔹 Received Power = EIRP − FSPL</p>
+                <p>🔹 Actual SNR = Received Power − Noise Power</p>
+                <p>🔹 <strong style="color:#D7D2CB;">Link Margin = Actual SNR − Required SNR</strong></p>
+                <p class="mt-2" style="color:rgba(215,210,203,0.4);">Positive margin = stronger link than required.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Section C + D: Result + Detail (right) -->
+        <div class="lg:col-span-3 space-y-5">
+
+          <!-- Result Card -->
+          <div class="card p-8 text-center" id="result-card">
+            <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.35);">System Link Margin</p>
+            <div class="result-margin" id="margin-display">–</div>
+            <p class="text-xs mt-1" style="color:rgba(215,210,203,0.35);">dB</p>
+            <div id="link-status-badge" class="inline-block mt-4 px-4 py-1.5 rounded-full text-sm font-bold">–</div>
+            <p class="text-xs mt-3" style="color:rgba(215,210,203,0.4);">This value tells you whether your communication link is strong enough.</p>
+          </div>
+
+          <!-- Charts -->
+          <div class="card p-5">
+            <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Signal Quality Comparison</p>
+            <canvas id="chart-compare" style="max-height:120px;"></canvas>
+          </div>
+
+          <!-- Margin gauge -->
+          <div class="card p-5">
+            <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Link Margin (dB)</p>
+            <canvas id="chart-margin" style="max-height:80px;"></canvas>
+          </div>
+
+          <!-- Detailed Calculations (collapsible) -->
+          <details id="detail-section">
+            <summary class="card px-5 py-3 cursor-pointer text-sm font-semibold" style="color:#c4a0e8;">🔍 Show Detailed Calculations</summary>
+            <div class="card mt-2 overflow-hidden">
+              <table class="w-full text-xs" style="border-collapse:collapse;">
+                <thead><tr>
+                  <th class="text-left px-4 py-2.5" style="background:#1e1030;color:rgba(215,210,203,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Parameter</th>
+                  <th class="text-right px-4 py-2.5" style="background:#1e1030;color:rgba(215,210,203,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Value</th>
+                  <th class="text-right px-4 py-2.5" style="background:#1e1030;color:rgba(215,210,203,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Unit</th>
+                  <th class="text-left px-4 py-2.5 hidden sm:table-cell" style="background:#1e1030;color:rgba(215,210,203,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Formula</th>
+                </tr></thead>
+                <tbody id="calc-table-body"></tbody>
+              </table>
+            </div>
+          </details>
+
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-col sm:flex-row gap-3 pb-10">
+        <button class="btn-sec" onclick="window.location.href = '/power-budget'">← Back to Power Budget</button>
+        <button class="btn-primary" id="btn-save" onclick="saveBudget()">💾 Save Link Budget</button>
+        <button class="btn-primary ml-auto" id="btn-next" disabled onclick="goNext()">Continue to Mass Budget →</button>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  const API = window.location.origin + '/api';
+  const token=localStorage.getItem('sp_token');
+  const missionId=localStorage.getItem('sp_mission_id');
+  if(!token) window.location.href = '/';
+  if(!missionId) window.location.href = '/mission';
+
+  // ── Stepper ──────────────────────────────────────────────────────────────────
+  const STEPS=['Create Mission','Components','CONOPS','Data Budget','Power Budget','Link Budget','Mass Budget','Cost Budget','Dashboard'];
+  const CURRENT=6;
+  document.getElementById('stepper').innerHTML=STEPS.map((s,i)=>{
+    const n=i+1,active=n===CURRENT,done=n<CURRENT;
+    const cls=active?'step-active':done?'step-done':'step-future';
+    return `<div class="flex flex-col items-center ${n>8?'opacity-40':''}">
+      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${cls}">${n}</div>
+      <span class="text-xs mt-1 hidden md:block" style="color:${active?'#c4a0e8':done?'rgba(215,210,203,0.55)':'rgba(215,210,203,0.2)'};">${s}</span>
+    </div>${i<STEPS.length-1?`<div class="flex-1 h-0.5 mx-1 mt-3.5 ${done?'bg-secondary':'bg-secondary/20'}"></div>`:''}`;
+  }).join('');
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  let constraints={good_link_margin_threshold_db:3,weak_link_margin_threshold_db:0};
+  let presets=[], activeBand='UHF', mission=null, linkIsSaved=false;
+  let cCompare=null, cMargin=null;
+
+  // ── FSPL + Link Calc (frontend mirror for live updates) ──────────────────────
+  function log10(x){return Math.log(x)/Math.LN10;}
+  function fspl_db(f_mhz,d_km){
+    if(f_mhz<=0||d_km<=0)return 0;
+    return 20*log10(d_km*1000)+20*log10(f_mhz*1e6)-147.55;
+  }
+  function noise_dbm(dr_kbps){
+    if(dr_kbps<=0)return 0;
+    const k=1.380649e-23, T=290, bw=dr_kbps*1000;
+    return 10*log10(k*T*bw)+30;
+  }
+  function calcLink(){
+    const dlFreq=parseFloat(document.getElementById('dl-freq').value)||0;
+    const gain=parseFloat(document.getElementById('gain').value)||0;
+    const dr=parseFloat(document.getElementById('data-rate').value)||0.001;
+    const reqSnr=parseFloat(document.getElementById('req-snr').value)||0;
+    const dist=parseFloat(document.getElementById('distance-km').value)||0;
+    const txPow=parseFloat(document.getElementById('tx-power').value)||0;
+    const {good_link_margin_threshold_db:good,weak_link_margin_threshold_db:weak}=constraints;
+    const fspl=fspl_db(dlFreq,dist);
+    const eirp=txPow+gain;
+    const rx=eirp-fspl;
+    const noise=noise_dbm(dr);
+    const actualSnr=rx-noise;
+    const margin=actualSnr-reqSnr;
+    let status='Failed Link';
+    if(margin>good) status='Good Link';
+    else if(margin>=weak) status='Weak Link';
+    return {dist,txPow,fspl,eirp,rx,noise,actualSnr,reqSnr,margin,status};
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  async function init(){
+    const [mRes,lRes]=await Promise.all([
+      fetch(`${API}/missions/${missionId}`,{headers:{Authorization:`Bearer ${token}`}}),
+      fetch(`${API}/missions/${missionId}/link-budget`,{headers:{Authorization:`Bearer ${token}`}}),
+    ]);
+    if(!mRes.ok){alert('Could not load mission');return;}
+    mission=await mRes.json();
+    const lData=await lRes.json();
+
+    constraints=lData.constraints;
+    presets=lData.presets;
+    activeBand=lData.band_profile;
+    linkIsSaved = lData.is_saved;
+
+    document.getElementById('mission-badge').textContent=mission.mission_name;
+
+    if(!linkIsSaved){
+      // First time — leave all fields empty for the student to fill
+      document.getElementById('dl-freq').value='';
+      document.getElementById('ul-freq').value='';
+      document.getElementById('gain').value='';
+      document.getElementById('data-rate').value='';
+      document.getElementById('req-snr').value='';
+      document.getElementById('distance-km').value='';
+      document.getElementById('tx-power').value='';
+    } else {
+      document.getElementById('dl-freq').value=lData.downlink_frequency_mhz;
+      document.getElementById('ul-freq').value=lData.uplink_frequency_mhz;
+      document.getElementById('gain').value=lData.satellite_antenna_gain_dbi;
+      document.getElementById('data-rate').value=lData.data_rate_kbps;
+      document.getElementById('req-snr').value=lData.required_signal_quality_db;
+      document.getElementById('distance-km').value=lData.constraints.assumed_distance_km||'';
+      document.getElementById('tx-power').value=lData.constraints.transmit_power_dbm||'';
+    }
+
+    renderBandPills();
+    renderMissionBar(lData.calculated.link_status);
+    onInputChange();
+  }
+  init();
+
+  // ── Mission bar ──────────────────────────────────────────────────────────────
+  function renderMissionBar(status){
+    const sc={'Good Link':{cls:'status-badge-good',txt:'✓ Good Link'},'Weak Link':{cls:'status-badge-weak',txt:'⚠️ Weak Link'},'Failed Link':{cls:'status-badge-fail',txt:'❌ Failed Link'}};
+    const s=sc[status]||sc['Failed Link'];
+    document.getElementById('sec-mission').innerHTML=`
+      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Mission</p><p class="text-sm font-bold text-white">${mission?.mission_name||'–'}</p></div>
+      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Orbit</p><p class="text-sm font-bold text-white">${mission?.orbit_type||'–'}</p></div>
+      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Band</p><p class="text-sm font-bold text-white">${activeBand}</p></div>
+      <div><span class="text-xs font-bold px-3 py-1 rounded-full ${s.cls}">${s.txt}</span></div>`;
+  }
+
+  // ── Band pills ───────────────────────────────────────────────────────────────
+  function renderBandPills(){
+    const el=document.getElementById('band-pills');
+    const bands=['UHF','S-Band'];
+    el.innerHTML=bands.map(b=>`<button class="band-pill ${b===activeBand?'active':''}" id="pill-${b.replace('-','')}" onclick="selectBand('${b}')">${b}</button>`).join('');
+  }
+  function selectBand(band){
+    activeBand=band;
+    renderBandPills();
+    const preset=presets.find(p=>p.band_profile===band);
+    if(preset){
+      // For S-Band always auto-fill; for UHF only fill if unsaved
+      if(band !== 'UHF' || linkIsSaved){
+        document.getElementById('dl-freq').value=preset.downlink_frequency_mhz;
+        document.getElementById('ul-freq').value=preset.uplink_frequency_mhz;
+        document.getElementById('gain').value=preset.satellite_antenna_gain_dbi;
+        document.getElementById('data-rate').value=preset.data_rate_kbps;
+        document.getElementById('req-snr').value=preset.required_signal_quality_db;
+        document.getElementById('distance-km').value=constraints.assumed_distance_km||'';
+        document.getElementById('tx-power').value=constraints.transmit_power_dbm||'';
+      } else {
+        // UHF first-time: clear all student fields
+        document.getElementById('dl-freq').value='';
+        document.getElementById('ul-freq').value='';
+        document.getElementById('gain').value='';
+        document.getElementById('data-rate').value='';
+        document.getElementById('req-snr').value='';
+        document.getElementById('distance-km').value='';
+        document.getElementById('tx-power').value='';
+      }
+    }
+    onInputChange();
+  }
+
+  // ── Live recalc ──────────────────────────────────────────────────────────────
+  function onInputChange(){
+    const c=calcLink();
+    renderResult(c);
+    renderCalcTable(c);
+    updateCharts(c);
+    renderMissionBar(c.status);
+    renderAlertBanner(c.status,c.margin);
+    document.getElementById('btn-next').disabled=(c.status!=='Good Link');
+  }
+
+  // ── Result card ──────────────────────────────────────────────────────────────
+  function renderResult(c){
+    const cls=c.status==='Good Link'?'status-good':c.status==='Weak Link'?'status-weak':'status-fail';
+    const badgeCls=c.status==='Good Link'?'status-badge-good':c.status==='Weak Link'?'status-badge-weak':'status-badge-fail';
+    const icon=c.status==='Good Link'?'🟢':c.status==='Weak Link'?'🟡':'🔴';
+    document.getElementById('margin-display').textContent=`${c.margin>=0?'+':''}${c.margin.toFixed(2)}`;
+    document.getElementById('margin-display').className=`result-margin ${cls}`;
+    const badge=document.getElementById('link-status-badge');
+    badge.textContent=`${icon} ${c.status}`;
+    badge.className=`inline-block mt-4 px-4 py-1.5 rounded-full text-sm font-bold ${badgeCls}`;
+  }
+
+  // ── Calc table ───────────────────────────────────────────────────────────────
+  function renderCalcTable(c){
+    const rows=[
+      {p:'EIRP', v:c.eirp.toFixed(2), u:'dBm', f:'Tx Power + Antenna Gain'},
+      {p:'Free Space Path Loss', v:c.fspl.toFixed(4), u:'dB', f:'20·log(d) + 20·log(f) − 147.55'},
+      {p:'Received Power', v:c.rx.toFixed(4), u:'dBm', f:'EIRP − FSPL'},
+      {p:'Noise Power', v:c.noise.toFixed(4), u:'dBm', f:'10·log(k·T·BW) + 30'},
+      {p:'Actual Signal Quality', v:c.actualSnr.toFixed(4), u:'dB', f:'Received Power − Noise Power'},
+      {p:'Required Signal Quality', v:c.reqSnr.toFixed(1), u:'dB', f:'(student input)'},
+      {p:'System Link Margin', v:`${c.margin>=0?'+':''}${c.margin.toFixed(4)}`, u:'dB', f:'Actual SNR − Required SNR'},
+    ];
+    document.getElementById('calc-table-body').innerHTML=rows.map((r,i)=>{
+      const isLast=i===rows.length-1;
+      return `<tr class="calc-row ${isLast?'font-bold':''}">
+        <td class="px-4 py-2.5" style="border-top:1px solid rgba(215,210,203,0.05);color:${isLast?'#D7D2CB':'rgba(215,210,203,0.7)'};">${r.p}</td>
+        <td class="px-4 py-2.5 text-right font-mono" style="border-top:1px solid rgba(215,210,203,0.05);color:${isLast?'#c4a0e8':'rgba(215,210,203,0.9)'};">${r.v}</td>
+        <td class="px-4 py-2.5 text-right" style="border-top:1px solid rgba(215,210,203,0.05);color:rgba(215,210,203,0.4);">${r.u}</td>
+        <td class="px-4 py-2.5 hidden sm:table-cell" style="border-top:1px solid rgba(215,210,203,0.05);color:rgba(215,210,203,0.3);">${r.f}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Alert banner ─────────────────────────────────────────────────────────────
+  function renderAlertBanner(status,margin){
+    const el=document.getElementById('alert-banner');
+    if(status==='Good Link'){el.classList.add('hidden');return;}
+    el.classList.remove('hidden');
+    if(status==='Failed Link'){
+      el.className='rounded-xl px-4 py-3 text-sm font-medium';
+      el.style.cssText='background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);border-radius:0.75rem;';
+      el.textContent=`❌ Link failed — margin is ${margin.toFixed(2)} dB. Required signal quality is not met. Try a higher gain antenna or lower data rate.`;
+    } else {
+      el.className='rounded-xl px-4 py-3 text-sm font-medium';
+      el.style.cssText='background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3);border-radius:0.75rem;';
+      el.textContent=`⚠️ Link margin is weak (${margin.toFixed(2)} dB). Consider increasing antenna gain or reducing required signal quality.`;
+    }
+  }
+
+  // ── Charts ───────────────────────────────────────────────────────────────────
+  function updateCharts(c){
+    // Actual vs Required SNR bar chart
+    if(cCompare)cCompare.destroy();
+    cCompare=new Chart(document.getElementById('chart-compare').getContext('2d'),{
+      type:'bar',
+      data:{labels:['Required SNR','Actual SNR'],datasets:[{data:[c.reqSnr,c.actualSnr],backgroundColor:[`rgba(101,63,132,0.5)`,c.actualSnr>=c.reqSnr?`rgba(16,185,129,0.6)`:`rgba(239,68,68,0.6)`],borderRadius:6,borderWidth:0}]},
+      options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'rgba(215,210,203,0.5)',font:{size:10}},grid:{color:'rgba(215,210,203,0.05)'},title:{display:true,text:'dB',color:'rgba(215,210,203,0.3)',font:{size:9}}},y:{ticks:{color:'rgba(215,210,203,0.6)',font:{size:10}},grid:{display:false}}}}
+    });
+
+    // Margin bar
+    if(cMargin)cMargin.destroy();
+    const mVal=Math.max(Math.min(c.margin,20),-10);
+    const color=c.status==='Good Link'?'rgba(16,185,129,0.7)':c.status==='Weak Link'?'rgba(245,158,11,0.7)':'rgba(239,68,68,0.7)';
+    cMargin=new Chart(document.getElementById('chart-margin').getContext('2d'),{
+      type:'bar',
+      data:{labels:['Link Margin'],datasets:[{data:[mVal],backgroundColor:[color],borderRadius:6,borderWidth:0}]},
+      options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:-10,max:20,ticks:{color:'rgba(215,210,203,0.5)',font:{size:10}},grid:{color:'rgba(215,210,203,0.05)'},title:{display:true,text:'dB — 0 dB = minimum, >3 dB = good',color:'rgba(215,210,203,0.3)',font:{size:9}}},y:{display:false}}}
+    });
+  }
+
+  // ── Save ─────────────────────────────────────────────────────────────────────
+  async function saveBudget(){
+    const btn=document.getElementById('btn-save');
+    btn.textContent='Saving…';btn.disabled=true;
+    const payload={
+      band_profile:activeBand,
+      downlink_frequency_mhz:parseFloat(document.getElementById('dl-freq').value)||0,
+      uplink_frequency_mhz:parseFloat(document.getElementById('ul-freq').value)||0,
+      satellite_antenna_gain_dbi:parseFloat(document.getElementById('gain').value)||0,
+      data_rate_kbps:parseFloat(document.getElementById('data-rate').value)||0,
+      required_signal_quality_db:parseFloat(document.getElementById('req-snr').value)||0,
+      notes:null
+    };
+    try{
+      const res=await fetch(`${API}/missions/${missionId}/link-budget/save`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(payload)});
+      if(!res.ok)throw new Error((await res.json()).detail||'Save failed');
+      btn.textContent='✓ Saved!';btn.style.background='linear-gradient(135deg,#16a34a,#15803d)';
+      setTimeout(()=>{btn.textContent='💾 Save Link Budget';btn.style.background='';btn.disabled=false;},2000);
+    }catch(err){alert(err.message);btn.textContent='💾 Save Link Budget';btn.disabled=false;}
+  }
+
+  function goNext(){saveBudget().then(()=>setTimeout(()=>{window.location.href = '/mass-budget';},600));}
+  function logout(){localStorage.clear();window.location.href = '/';}
+</script>
+</body>
+</html>

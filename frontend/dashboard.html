@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Mission Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors:{ primary:'#241134', secondary:'#653f84', light:'#D7D2CB' }, fontFamily:{ sans:['Inter','sans-serif'] } } }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; background:#1a0c27; color:#D7D2CB; }
+    .card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; }
+    .kpi-card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; padding:1.25rem; transition:all 0.2s; }
+    .kpi-card:hover { border-color:rgba(101,63,132,0.4); transform:translateY(-2px); }
+    .status-good  { background:rgba(16,185,129,0.15);  color:#6ee7b7; border:1px solid rgba(16,185,129,0.3); }
+    .status-warn  { background:rgba(245,158,11,0.15);  color:#fcd34d; border:1px solid rgba(245,158,11,0.3); }
+    .status-fail  { background:rgba(239,68,68,0.15);   color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+    .status-info  { background:rgba(101,63,132,0.15);  color:#c4a0e8; border:1px solid rgba(101,63,132,0.3); }
+    .badge { font-size:0.65rem; font-weight:700; padding:0.2rem 0.6rem; border-radius:9999px; text-transform:uppercase; letter-spacing:0.04em; }
+    .step-done    { background:#653f84; color:#fff; }
+    .step-active  { background:linear-gradient(135deg,#653f84,#9b6fc4); color:#fff; }
+    .step-future  { background:rgba(101,63,132,0.12); color:rgba(215,210,203,0.25); }
+    .subsystem-badge { font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:0.15rem 0.45rem; border-radius:9999px; }
+    .btn-primary { background:linear-gradient(135deg,#653f84,#241134); color:#fff; border:none; border-radius:0.75rem; padding:0.65rem 1.4rem; font-size:0.82rem; font-weight:600; cursor:pointer; transition:opacity 0.2s,transform 0.1s; }
+    .btn-primary:hover { opacity:0.88; transform:translateY(-1px); }
+    .btn-sec { background:rgba(255,255,255,0.05); border:1px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.7); border-radius:0.75rem; padding:0.65rem 1.2rem; font-size:0.82rem; font-weight:600; cursor:pointer; }
+    .btn-sec:hover { background:rgba(255,255,255,0.09); }
+    .tab-btn { font-size:0.72rem; font-weight:600; padding:0.3rem 0.85rem; border-radius:0.5rem; cursor:pointer; border:1px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.5); background:transparent; transition:all 0.15s; }
+    .tab-btn.active { background:rgba(101,63,132,0.4); border-color:#653f84; color:#fff; }
+    .module-card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; padding:1.25rem; cursor:pointer; transition:all 0.2s; }
+    .module-card:hover { border-color:rgba(101,63,132,0.45); transform:translateY(-2px); }
+    ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+    .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between shrink-0" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+      <span id="mission-badge" class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">Loading…</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="window.location.href = '/cost-budget'" class="btn-sec text-xs px-3 py-1.5">← Cost Budget</button>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Stepper -->
+  <div class="px-6 py-4 shrink-0" style="background:rgba(36,17,52,0.5);">
+    <div class="max-w-6xl mx-auto flex items-center gap-0" id="stepper"></div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div id="loading" class="flex-1 flex items-center justify-center">
+    <div class="text-center space-y-4">
+      <div class="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full spin mx-auto"></div>
+      <p class="text-sm" style="color:rgba(215,210,203,0.5);">Aggregating mission data…</p>
+    </div>
+  </div>
+
+  <!-- Main Dashboard (hidden until loaded) -->
+  <div id="dashboard" class="flex-1 overflow-y-auto hidden">
+    <div class="max-w-[1400px] mx-auto px-4 py-8 space-y-8">
+
+      <!-- Section A: Mission Header -->
+      <div class="card p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+          <div class="flex-1 space-y-3">
+            <div class="flex items-center gap-3 flex-wrap">
+              <h1 id="mission-name" class="text-2xl font-bold text-white">Mission Dashboard</h1>
+              <span id="overall-badge" class="badge px-3 py-1.5 text-sm"></span>
+            </div>
+            <div id="mission-objective" class="text-sm"></div>
+            <div id="mission-meta" class="flex flex-wrap gap-4 text-xs" style="color:rgba(215,210,203,0.45);"></div>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button onclick="recalculate()" class="btn-sec text-xs">🔄 Recalculate</button>
+            <button onclick="exportJSON()" class="btn-sec text-xs">📥 Export JSON</button>
+            <button onclick="printReport()" class="btn-sec text-xs">🖨️ Print Report</button>
+          </div>
+        </div>
+
+        <!-- Step Progress Tracker -->
+        <div class="mt-6 pt-5 border-t" style="border-color:rgba(215,210,203,0.08);">
+          <p class="text-[10px] font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.35);">Mission Journey Progress</p>
+          <div id="step-tracker" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+
+      <!-- Section B: KPI Cards -->
+      <div>
+        <p class="text-xs font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.35);">📊 Key Performance Indicators</p>
+        <div id="kpi-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4"></div>
+      </div>
+
+      <!-- Section C: Module Status Cards -->
+      <div>
+        <p class="text-xs font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.35);">🛠️ Budget Module Status</p>
+        <div id="module-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- Section D: Charts -->
+      <div>
+        <p class="text-xs font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.35);">📈 Mission Breakdown Charts</p>
+        <!-- Row 1: 5 Doughnut charts -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+          <div class="card p-4 flex flex-col items-center">
+            <p class="text-[10px] font-bold uppercase tracking-widest mb-3 w-full" style="color:rgba(215,210,203,0.4);">Components/Subsystem</p>
+            <div class="w-full h-44"><canvas id="chart-comp"></canvas></div>
+          </div>
+          <div class="card p-4 flex flex-col items-center">
+            <p class="text-[10px] font-bold uppercase tracking-widest mb-3 w-full" style="color:rgba(215,210,203,0.4);">Data/Subsystem</p>
+            <div class="w-full h-44"><canvas id="chart-data"></canvas></div>
+          </div>
+          <div class="card p-4 flex flex-col items-center">
+            <p class="text-[10px] font-bold uppercase tracking-widest mb-3 w-full" style="color:rgba(215,210,203,0.4);">Power/Subsystem</p>
+            <div class="w-full h-44"><canvas id="chart-power"></canvas></div>
+          </div>
+          <div class="card p-4 flex flex-col items-center">
+            <p class="text-[10px] font-bold uppercase tracking-widest mb-3 w-full" style="color:rgba(215,210,203,0.4);">Mass/Subsystem</p>
+            <div class="w-full h-44"><canvas id="chart-mass"></canvas></div>
+          </div>
+          <div class="card p-4 flex flex-col items-center">
+            <p class="text-[10px] font-bold uppercase tracking-widest mb-3 w-full" style="color:rgba(215,210,203,0.4);">Cost/Subsystem</p>
+            <div class="w-full h-44"><canvas id="chart-cost"></canvas></div>
+          </div>
+        </div>
+        <!-- Row 2: Mode distribution (left) + switchable top components bar (right) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="card p-5">
+            <p class="text-[10px] font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.4);">🕐 Mode Distribution</p>
+            <div class="h-52"><canvas id="chart-modes"></canvas></div>
+          </div>
+          <div class="card p-5">
+            <div class="flex items-center justify-between mb-4">
+              <p class="text-[10px] font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">🏆 Top Components</p>
+              <div class="flex gap-1" id="tab-btns">
+                <button class="tab-btn active" onclick="switchTop('data',this)">Data</button>
+                <button class="tab-btn" onclick="switchTop('power',this)">Power</button>
+                <button class="tab-btn" onclick="switchTop('mass',this)">Mass</button>
+                <button class="tab-btn" onclick="switchTop('cost',this)">Cost</button>
+              </div>
+            </div>
+            <div class="h-52"><canvas id="chart-top"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section E: Margin Overview -->
+      <div>
+        <p class="text-xs font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.35);">⚖️ Mission Margin Overview</p>
+        <div class="card overflow-hidden">
+          <table class="w-full text-xs" style="border-collapse:collapse;">
+            <thead>
+              <tr style="background:#1e1030;">
+                <th class="text-left px-5 py-3" style="color:rgba(215,210,203,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;font-size:0.68rem;">Margin</th>
+                <th class="text-center px-5 py-3" style="color:rgba(215,210,203,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;font-size:0.68rem;">Value</th>
+                <th class="text-center px-5 py-3" style="color:rgba(215,210,203,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;font-size:0.68rem;">Status</th>
+                <th class="text-left px-5 py-3" style="color:rgba(215,210,203,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;font-size:0.68rem;">Interpretation</th>
+              </tr>
+            </thead>
+            <tbody id="margin-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section F: Alerts & Recommendations -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card p-5 space-y-3">
+          <p class="text-xs font-bold uppercase tracking-widest mb-2" style="color:rgba(215,210,203,0.35);">🚨 Mission Alerts</p>
+          <div id="alerts-list" class="space-y-2"></div>
+        </div>
+        <div class="card p-5 space-y-3">
+          <p class="text-xs font-bold uppercase tracking-widest mb-2" style="color:rgba(215,210,203,0.35);">💡 Recommendations</p>
+          <div id="recs-list" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- Learning Note -->
+      <div class="card p-5" style="border-color:rgba(101,63,132,0.3);">
+        <p class="text-xs font-semibold mb-2" style="color:#c4a0e8;">📚 Mission Design Insight</p>
+        <p class="text-xs" style="color:rgba(215,210,203,0.55);">"A mission is strongest when all budgets work together. Improving one area — such as power — can affect another, such as mass or cost. Use this dashboard to find the weakest link in your satellite design."</p>
+      </div>
+
+      <!-- Section G: Footer -->
+      <div class="flex flex-col sm:flex-row gap-3 pb-10">
+        <button class="btn-sec" onclick="window.location.href = '/cost-budget'">← Back to Cost Budget</button>
+        <button class="btn-primary" onclick="recalculate()">🔄 Recalculate All</button>
+        <button class="btn-primary ml-auto" onclick="exportJSON()">📥 Export Mission Summary</button>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  const API = window.location.origin + '/api';
+  const token = localStorage.getItem('sp_token');
+  const missionId = localStorage.getItem('sp_mission_id');
+  if(!token) window.location.href = '/';
+  if(!missionId) window.location.href = '/mission';
+  function logout(){ localStorage.clear(); window.location.href = '/'; }
+
+  // ── Stepper ──────────────────────────────────────────────────────────────
+  const STEPS=['Create Mission','Components','CONOPS','Data Budget','Power Budget','Link Budget','Mass Budget','Cost Budget','Dashboard'];
+  const CURRENT=9;
+  document.getElementById('stepper').innerHTML=STEPS.map((s,i)=>{
+    const n=i+1, active=n===CURRENT, done=n<CURRENT;
+    const cls=active?'step-active':done?'step-done':'step-future';
+    return `<div class="flex flex-col items-center">
+      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${cls}">${n}</div>
+      <span class="text-xs mt-1 hidden md:block" style="color:${active?'#c4a0e8':done?'rgba(215,210,203,0.55)':'rgba(215,210,203,0.2)'};">${s}</span>
+    </div>${i<STEPS.length-1?`<div class="flex-1 h-0.5 mx-1 mt-3.5 ${done||active?'bg-secondary':'bg-secondary/20'}"></div>`:''}`;
+  }).join('');
+
+  // ── Colors ───────────────────────────────────────────────────────────────
+  const SC = {
+    ADCS:    { bg:'rgba(59,130,246,0.2)',  color:'#60a5fa' },
+    CDHS:    { bg:'rgba(168,85,247,0.2)',  color:'#c084fc' },
+    EPS:     { bg:'rgba(234,179,8,0.2)',   color:'#facc15' },
+    COMMS:   { bg:'rgba(236,72,153,0.2)',  color:'#f472b6' },
+    Payload: { bg:'rgba(16,185,129,0.2)',  color:'#34d399' },
+    Structure:{ bg:'rgba(99,102,241,0.2)', color:'#818cf8' },
+    Thermal: { bg:'rgba(244,63,94,0.2)',   color:'#fb7185' }
+  };
+  function subsysColor(s){ return (SC[s]||{color:'#c4a0e8'}).color; }
+
+  // ── Charts registry ──────────────────────────────────────────────────────
+  const charts = {};
+  function makeDonut(id, labels, data, colors) {
+    if(charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), {
+      type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:0 }] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'65%',
+        plugins:{ legend:{ display:true, position:'bottom', labels:{ font:{size:9}, boxWidth:8, padding:8, color:'rgba(215,210,203,0.55)' } } } }
+    });
+  }
+  function makeBar(id, labels, data, colors, labelStr) {
+    if(charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), {
+      type:'bar', data:{ labels, datasets:[{ label:labelStr, data, backgroundColor:colors, borderRadius:4 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false } },
+        scales:{
+          y:{ beginAtZero:true, grid:{ color:'rgba(255,255,255,0.04)' }, ticks:{ color:'rgba(215,210,203,0.4)', font:{size:9} }},
+          x:{ grid:{ display:false }, ticks:{ color:'rgba(215,210,203,0.4)', font:{size:9}, maxRotation:30 }}
+        }
+      }
+    });
+  }
+
+  // ── Top components tabs ──────────────────────────────────────────────────
+  let topData = {};
+  function switchTop(metric, btn) {
+    document.querySelectorAll('#tab-btns .tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const items = topData[metric] || [];
+    const labels = items.map(t => t.component_name.substring(0,12)+'…');
+    const vals = items.map(t => t.value);
+    const colors = items.map(t => subsysColor(t.subsystem));
+    const units = { data:'KB/day', power:'mWh/orbit', mass:'g', cost:'AED' };
+    makeBar('chart-top', labels, vals, colors, `${metric.charAt(0).toUpperCase()+metric.slice(1)} (${units[metric]})`);
+  }
+
+  // ── Status helpers ───────────────────────────────────────────────────────
+  function statusCls(s) {
+    if(s==='complete') return 'status-good';
+    if(s==='invalid')  return 'status-fail';
+    if(s==='warning')  return 'status-warn';
+    return 'status-info'; // incomplete
+  }
+  function statusLabel(s) {
+    if(s==='complete') return '✅ Complete';
+    if(s==='invalid')  return '❌ Invalid';
+    if(s==='warning')  return '⚠️ Warning';
+    return '⏳ Incomplete';
+  }
+  function marginStatusCls(s) {
+    if(s==='good') return 'status-good';
+    return 'status-fail';
+  }
+
+  // ── Load dashboard data ──────────────────────────────────────────────────
+  let dashData = null;
+
+  async function loadDashboard() {
+    document.getElementById('loading').classList.remove('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+    try {
+      const res = await fetch(`${API}/missions/${missionId}/dashboard`, {
+        headers:{ Authorization:`Bearer ${token}` }
+      });
+      if(!res.ok) throw new Error(`Failed: ${res.status}`);
+      dashData = await res.json();
+      render(dashData);
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+    } catch(e) {
+      console.error(e);
+      document.getElementById('loading').innerHTML = `<div class="text-center"><p class="text-red-400 text-sm">Failed to load dashboard: ${e.message}</p><button onclick="loadDashboard()" class="btn-primary mt-4">Retry</button></div>`;
+    }
+  }
+
+  function render(d) {
+    // A: Mission header
+    document.getElementById('mission-badge').textContent = d.mission.mission_name;
+    document.getElementById('mission-name').textContent = d.mission.mission_name;
+
+    // Parse structured objective
+    const objRaw = d.mission.mission_objective || '';
+    const objEl = document.getElementById('mission-objective');
+    const SECTION_ICONS = {
+      'Primary Objective': '🎯',
+      'Success Criteria':  '✅',
+      'Mission Lifetime':  '⏱️',
+      'Orbital Altitude':  '🛰️',
+      'Operational Concept':'🔁',
+      'Orbit Type':        '🌍',
+      'Orbit Duration':    '🕒',
+      'Orbits Per Day':    '🔄',
+    };
+    if (objRaw.includes('[Primary Objective]')) {
+      const parts = objRaw.split(' | ');
+      objEl.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">${
+        parts.map(p => {
+          const m = p.match(/^\[(.+?)\] (.+)$/);
+          if (!m) return '';
+          const icon = SECTION_ICONS[m[1]] || '📌';
+          return `<div class="rounded-lg px-3 py-2" style="background:rgba(101,63,132,0.1);border:1px solid rgba(101,63,132,0.2);">
+            <p class="text-[10px] font-bold uppercase tracking-wider mb-0.5" style="color:rgba(215,210,203,0.4);">${icon} ${m[1]}</p>
+            <p class="text-xs" style="color:rgba(215,210,203,0.75);">${m[2]}</p>
+          </div>`;
+        }).join('')
+      }</div>`;
+    } else {
+      objEl.innerHTML = `<p class="text-sm" style="color:rgba(215,210,203,0.55);max-width:60ch;">${objRaw}</p>`;
+    }
+
+    const statusColors = { 'Ready':'status-good', 'Needs Review':'status-warn', 'Invalid Mission':'status-fail' };
+    const statusLabels = { 'Ready':'✅ Ready', 'Needs Review':'⚠️ Needs Review', 'Invalid Mission':'❌ Invalid Mission' };
+    const ob = document.getElementById('overall-badge');
+    ob.textContent = statusLabels[d.overall_status.status] || d.overall_status.status;
+    ob.className = `badge px-3 py-1.5 text-xs ${statusColors[d.overall_status.status] || 'status-info'}`;
+
+    document.getElementById('mission-meta').innerHTML = [
+      `🌍 ${d.mission.orbit_type || 'N/A'}`,
+      `⏱️ ${d.mission.orbit_duration_min} min orbit`,
+      `🔄 ${d.mission.orbits_per_day} orbits/day`,
+      `📦 ${d.mission.selected_cubesat_size} CubeSat`,
+      `🔧 ${d.mission.components_count} components`,
+      `🕒 ${d.mission.last_updated}`
+    ].map(t => `<span>${t}</span>`).join('');
+
+    // Step tracker
+    document.getElementById('step-tracker').innerHTML = d.step_status.map(s =>
+      `<button onclick="window.location.href='${s.page}'" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-semibold transition hover:opacity-80 ${statusCls(s.status)}" style="border-color:inherit;">
+        ${statusLabel(s.status).split(' ')[0]} <span>${s.step}</span>
+      </button>`
+    ).join('');
+
+    // B: KPI cards
+    const kObj = d.kpis;
+    const kpis = [
+      { label:'Components', value: kObj.total_components, unit:'' },
+      { label:'Mission Modes', value: kObj.total_modes, unit:'' },
+      { label:'Data/Day', value: kObj.total_data_per_day_kb.toLocaleString(), unit:'KB' },
+      { label:'Power Load', value: kObj.total_power_consumption_mw.toLocaleString(), unit:'mW' },
+      { label:'Total Mass', value: kObj.total_mass_kg, unit:'kg' },
+      { label:'Platform Cost', value: kObj.total_platform_cost_aed.toLocaleString(), unit:'AED' },
+      { label:'Link Margin', value: kObj.system_link_margin_db, unit:'dB' },
+    ];
+    document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
+      <div class="kpi-card">
+        <p class="text-[10px] font-semibold uppercase tracking-widest mb-2" style="color:rgba(215,210,203,0.4);">${k.label}</p>
+        <p class="text-xl font-bold text-white">${k.value}<span class="text-xs font-normal ml-1" style="color:rgba(215,210,203,0.4);">${k.unit}</span></p>
+      </div>`).join('');
+
+    // C: Module cards
+    document.getElementById('module-grid').innerHTML = d.module_cards.map(m => `
+      <div class="module-card" onclick="window.location.href='${m.page}'">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-sm font-bold text-white">${m.module}</p>
+          <span class="badge ${statusCls(m.status)}">${statusLabel(m.status)}</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div><p class="text-[10px] text-zinc-500">${m.kpi1_label}</p><p class="text-sm font-bold text-white">${m.kpi1_value}</p></div>
+          <div><p class="text-[10px] text-zinc-500">${m.kpi2_label}</p><p class="text-sm font-bold text-white">${m.kpi2_value}</p></div>
+        </div>
+        <p class="text-[10px]" style="color:rgba(215,210,203,0.45);">${m.note}</p>
+      </div>`).join('');
+
+    // D: Charts
+    Chart.defaults.color = 'rgba(215,210,203,0.45)';
+    Chart.defaults.font.family = 'Inter';
+
+    function donutFrom(arr, valueFn) {
+      return { labels: arr.map(x=>x.subsystem), data: arr.map(valueFn), colors: arr.map(x=>subsysColor(x.subsystem)) };
+    }
+    const cc = donutFrom(d.charts.components_by_subsystem, x=>x.value);
+    const dd = donutFrom(d.charts.data_by_subsystem, x=>x.value);
+    const pp = donutFrom(d.charts.power_by_subsystem, x=>x.value);
+    const mm = donutFrom(d.charts.mass_by_subsystem, x=>x.value);
+    const ct = donutFrom(d.charts.cost_by_subsystem, x=>x.value);
+
+    makeDonut('chart-comp',  cc.labels, cc.data, cc.colors);
+    makeDonut('chart-data',  dd.labels, dd.data, dd.colors);
+    makeDonut('chart-power', pp.labels, pp.data, pp.colors);
+    makeDonut('chart-mass',  mm.labels, mm.data, mm.colors);
+    makeDonut('chart-cost',  ct.labels, ct.data, ct.colors);
+
+    // Mode chart
+    if(charts['chart-modes']) charts['chart-modes'].destroy();
+    const modeLabels = d.charts.mode_distribution.map(m=>m.mode_name);
+    const modeDurs = d.charts.mode_distribution.map(m=>m.duration_min);
+    charts['chart-modes'] = new Chart(document.getElementById('chart-modes'), {
+      type:'bar', data:{ labels:modeLabels, datasets:[{ label:'Duration (min)', data:modeDurs, backgroundColor:'rgba(101,63,132,0.6)', borderRadius:4 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+        scales:{ y:{ beginAtZero:true, grid:{ color:'rgba(255,255,255,0.04)' }, ticks:{ color:'rgba(215,210,203,0.4)', font:{size:9} }},
+                 x:{ grid:{ display:false }, ticks:{ color:'rgba(215,210,203,0.4)', font:{size:9} }} } }
+    });
+
+    // Top components charts
+    topData = {
+      data: d.charts.top_by_data,
+      power: d.charts.top_by_power,
+      mass: d.charts.top_by_mass,
+      cost: d.charts.top_by_cost,
+    };
+    switchTop('data', document.querySelector('#tab-btns .tab-btn'));
+
+    // E: Margins
+    document.getElementById('margin-tbody').innerHTML = d.margins.map((m,i) => `
+      <tr style="border-top:1px solid rgba(215,210,203,0.05);${i%2===0?'background:rgba(255,255,255,0.012)':''}">
+        <td class="px-5 py-3 text-xs font-semibold text-white">${m.label}</td>
+        <td class="px-5 py-3 text-center text-sm font-bold" style="color:${m.status==='good'?'#6ee7b7':'#fca5a5'}">${m.value.toLocaleString()} <span class="text-[10px] font-normal" style="color:rgba(215,210,203,0.4)">${m.unit}</span></td>
+        <td class="px-5 py-3 text-center"><span class="badge ${marginStatusCls(m.status)}">${m.status==='good'?'✅ Good':'❌ Failed'}</span></td>
+        <td class="px-5 py-3 text-xs" style="color:rgba(215,210,203,0.5)">${m.interpretation}</td>
+      </tr>`).join('');
+
+    // F: Alerts & Recommendations
+    document.getElementById('alerts-list').innerHTML = d.alerts.map(a =>
+      `<div class="rounded-lg px-4 py-2.5 text-xs ${a.includes('All mission')||a.includes('within')?'status-good':'status-fail'}">${a}</div>`
+    ).join('');
+    document.getElementById('recs-list').innerHTML = d.recommendations.length
+      ? d.recommendations.map(r => `<div class="rounded-lg px-4 py-2.5 text-xs status-warn">${r}</div>`).join('')
+      : `<div class="rounded-lg px-4 py-2.5 text-xs status-good">No action needed — all budgets are valid!</div>`;
+  }
+
+  async function recalculate() {
+    await loadDashboard();
+  }
+
+  async function exportJSON() {
+    try {
+      const res = await fetch(`${API}/missions/${missionId}/dashboard/export`, {
+        headers:{ Authorization:`Bearer ${token}` }
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mission_summary.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(e) {
+      alert('Export failed: ' + e.message);
+    }
+  }
+
+  function printReport() {
+    if (!dashData) { alert('Dashboard not loaded yet.'); return; }
+    const d = dashData;
+    const m = d.mission;
+    const kObj = d.kpis;
+    const date = new Date().toLocaleDateString('en-GB', {year:'numeric',month:'long',day:'numeric'});
+
+    const statusIcon = s => s === 'complete' ? '✅' : s === 'invalid' ? '❌' : s === 'warning' ? '⚠️' : '⏳';
+    const marginColor = s => s === 'good' ? '#166534' : '#991b1b';
+
+    const kpiRows = [
+      ['Total Components',      kObj.total_components,                          ''],
+      ['Mission Modes',         kObj.total_modes,                               ''],
+      ['Data per Day',          kObj.total_data_per_day_kb.toLocaleString(),     'KB'],
+      ['Total Power Load',      kObj.total_power_consumption_mw.toLocaleString(),'mW'],
+      ['Total Mass',            kObj.total_mass_kg,                             'kg'],
+      ['Platform Cost',         kObj.total_platform_cost_aed.toLocaleString(),  'AED'],
+      ['Link Margin',           kObj.system_link_margin_db,                     'dB'],
+    ];
+
+    const chartData = JSON.stringify(d.charts);
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Mission Report – ${m.mission_name}</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"><\/script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', Arial, sans-serif; color: #111; background: #fff; font-size: 11pt; }
+    @page { size: A4; margin: 18mm 16mm; }
+    .page-break { page-break-before: always; }
+
+    /* Header */
+    .report-header { text-align: center; border-bottom: 3px solid #241134; padding-bottom: 16px; margin-bottom: 20px; }
+    .report-header img { height: 60px; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+    .report-header h1 { font-size: 18pt; font-weight: 800; color: #241134; }
+    .report-header .subtitle { font-size: 9pt; color: #555; margin-top: 4px; }
+    .student-info { margin-top: 12px; font-size: 10pt; color: #333; }
+    .student-info strong { color: #241134; }
+    .print-date { font-size: 8.5pt; color: #888; margin-top: 4px; }
+
+    /* Section headers */
+    h2 { font-size: 12pt; font-weight: 700; color: #241134; margin: 22px 0 10px; border-left: 4px solid #653f84; padding-left: 10px; }
+
+    /* Info block */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; font-size: 9.5pt; margin-bottom: 6px; }
+    .info-grid span { color: #555; }
+    .info-grid strong { color: #111; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 6px; }
+    th { background: #241134; color: #fff; padding: 7px 10px; text-align: left; font-weight: 600; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 6px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+    tr:nth-child(even) td { background: #f9f7fc; }
+
+    /* Status pills */
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 8pt; font-weight: 700; }
+    .pill-ok   { background: #d1fae5; color: #065f46; }
+    .pill-fail { background: #fee2e2; color: #991b1b; }
+    .pill-warn { background: #fef3c7; color: #92400e; }
+    .pill-info { background: #ede9fe; color: #5b21b6; }
+
+    /* Objective box */
+    .objective-box { background: #f5f3ff; border: 1px solid #c4b5fd; border-radius: 8px; padding: 12px 16px; font-size: 9.5pt; color: #333; line-height: 1.6; margin-bottom: 4px; }
+
+    /* Footer */
+    .report-footer { text-align: center; font-size: 8pt; color: #aaa; border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 24px; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="report-header">
+    <img src="${window.location.origin}/static/logo.png" alt="SpacePoint" />
+    <h1>Satellite Mission Report</h1>
+    <p class="subtitle">SpacePoint — Educational Mission Design Platform</p>
+    <div class="student-info">
+      <strong>Student:</strong> ${m.student_name || 'N/A'}
+      ${m.school_name ? `&nbsp;&nbsp;|&nbsp;&nbsp;<strong>School:</strong> ${m.school_name}` : ''}
+      ${m.grade ? `&nbsp;&nbsp;|&nbsp;&nbsp;<strong>Grade:</strong> ${m.grade}` : ''}
+    </div>
+    <p class="print-date">Generated: ${date}</p>
+  </div>
+
+  <!-- MISSION INFO -->
+  <h2>Mission Overview</h2>
+  <div class="info-grid">
+    <div><span>Mission Name: </span><strong>${m.mission_name}</strong></div>
+    <div><span>Orbit Type: </span><strong>${m.orbit_type || 'N/A'}</strong></div>
+    <div><span>Orbit Duration: </span><strong>${m.orbit_duration_min} min</strong></div>
+    <div><span>Orbits per Day: </span><strong>${m.orbits_per_day}</strong></div>
+    <div><span>CubeSat Size: </span><strong>${m.selected_cubesat_size}</strong></div>
+    <div><span>Components: </span><strong>${m.components_count}</strong></div>
+    <div><span>Overall Status: </span><strong>${d.overall_status.status}</strong></div>
+    <div><span>Last Updated: </span><strong>${m.last_updated}</strong></div>
+  </div>
+
+  ${m.mission_objective ? `
+  <h2>Mission Objective</h2>
+  <div class="objective-box">${m.mission_objective}</div>` : ''}
+
+  <!-- KPIs -->
+  <h2>Key Performance Indicators</h2>
+  <table>
+    <thead><tr><th>Indicator</th><th>Value</th><th>Unit</th></tr></thead>
+    <tbody>
+      ${kpiRows.map(([label, val, unit]) => `<tr><td>${label}</td><td><strong>${val}</strong></td><td>${unit}</td></tr>`).join('')}
+    </tbody>
+  </table>
+
+  <!-- MODULE STATUS -->
+  <h2>Budget Module Status</h2>
+  <table>
+    <thead><tr><th>Module</th><th>Status</th><th>Key Metric 1</th><th>Key Metric 2</th><th>Note</th></tr></thead>
+    <tbody>
+      ${d.module_cards.map(mc => {
+        const pClass = mc.status==='complete'?'pill-ok':mc.status==='invalid'?'pill-fail':mc.status==='warning'?'pill-warn':'pill-info';
+        return `<tr>
+          <td><strong>${mc.module}</strong></td>
+          <td><span class="pill ${pClass}">${statusIcon(mc.status)} ${mc.status.charAt(0).toUpperCase()+mc.status.slice(1)}</span></td>
+          <td>${mc.kpi1_label}: <strong>${mc.kpi1_value}</strong></td>
+          <td>${mc.kpi2_label}: <strong>${mc.kpi2_value}</strong></td>
+          <td style="color:#555;font-size:8.5pt;">${mc.note}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+
+  <!-- MARGINS -->
+  <h2>Mission Margin Overview</h2>
+  <table>
+    <thead><tr><th>Margin</th><th>Value</th><th>Unit</th><th>Status</th><th>Interpretation</th></tr></thead>
+    <tbody>
+      ${d.margins.map(mg => `<tr>
+        <td>${mg.label}</td>
+        <td style="font-weight:700;color:${marginColor(mg.status)};">${mg.value.toLocaleString()}</td>
+        <td>${mg.unit}</td>
+        <td><span class="pill ${mg.status==='good'?'pill-ok':'pill-fail'}">${mg.status==='good'?'✅ Good':'❌ Failed'}</span></td>
+        <td style="color:#555;font-size:8.5pt;">${mg.interpretation}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+
+  <!-- ALERTS -->
+  ${d.alerts.length ? `
+  <h2>Mission Alerts &amp; Recommendations</h2>
+  <table>
+    <thead><tr><th>Alerts</th></tr></thead>
+    <tbody>${d.alerts.map(a => `<tr><td>${a}</td></tr>`).join('')}</tbody>
+  </table>
+  ${d.recommendations.length ? `
+  <table style="margin-top:6px;">
+    <thead><tr><th>Recommendations</th></tr></thead>
+    <tbody>${d.recommendations.map(r => `<tr><td>💡 ${r}</td></tr>`).join('')}</tbody>
+  </table>` : ''}
+  ` : ''}
+
+  <div class="report-footer">
+    SpacePoint Educational Mission Design Platform  ·  ${date}
+  </div>
+
+  <!-- CHARTS PAGE -->
+  <div style="page-break-before:always;">
+    <h2 style="margin-top:0;">Mission Breakdown Charts</h2>
+    <p style="font-size:8.5pt;color:#888;margin-bottom:14px;">Subsystem distribution across key mission budgets</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px;margin-bottom:20px;">
+      <div style="text-align:center;">
+        <p style="font-size:8pt;font-weight:700;color:#241134;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Components / Subsystem</p>
+        <canvas id="pr-comp" width="220" height="220"></canvas>
+      </div>
+      <div style="text-align:center;">
+        <p style="font-size:8pt;font-weight:700;color:#241134;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Data / Subsystem</p>
+        <canvas id="pr-data" width="220" height="220"></canvas>
+      </div>
+      <div style="text-align:center;">
+        <p style="font-size:8pt;font-weight:700;color:#241134;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Power / Subsystem</p>
+        <canvas id="pr-power" width="220" height="220"></canvas>
+      </div>
+      <div style="text-align:center;">
+        <p style="font-size:8pt;font-weight:700;color:#241134;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Mass / Subsystem</p>
+        <canvas id="pr-mass" width="220" height="220"></canvas>
+      </div>
+      <div style="text-align:center;">
+        <p style="font-size:8pt;font-weight:700;color:#241134;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Cost / Subsystem</p>
+        <canvas id="pr-cost" width="220" height="220"></canvas>
+      </div>
+      <div style="text-align:center;">
+        <p style="font-size:8pt;font-weight:700;color:#241134;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Mode Distribution</p>
+        <canvas id="pr-modes" width="220" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="report-footer">
+    SpacePoint Educational Mission Design Platform  ·  ${date}
+  </div>
+
+<script>
+  const SUBSYS_COLORS={ADCS:'#60a5fa',CDHS:'#c084fc',EPS:'#facc15',COMMS:'#f472b6',Payload:'#34d399',Structure:'#818cf8',Thermal:'#fb7185'};
+  function scolor(s){ return SUBSYS_COLORS[s]||'#9b6fc4'; }
+  const cd=${chartData};
+  function makeDonut(id,items){
+    if(!items||!items.length)return;
+    new Chart(document.getElementById(id),{type:'doughnut',data:{labels:items.map(x=>x.subsystem),datasets:[{data:items.map(x=>x.value),backgroundColor:items.map(x=>scolor(x.subsystem)),borderWidth:2,borderColor:'#fff'}]},options:{animation:{duration:0},cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{size:8},boxWidth:8,padding:5,color:'#333'}}}}});
+  }
+  makeDonut('pr-comp',cd.components_by_subsystem);
+  makeDonut('pr-data',cd.data_by_subsystem);
+  makeDonut('pr-power',cd.power_by_subsystem);
+  makeDonut('pr-mass',cd.mass_by_subsystem);
+  makeDonut('pr-cost',cd.cost_by_subsystem);
+  if(cd.mode_distribution&&cd.mode_distribution.length){
+    new Chart(document.getElementById('pr-modes'),{type:'bar',data:{labels:cd.mode_distribution.map(m=>m.mode_name),datasets:[{data:cd.mode_distribution.map(m=>m.duration_min),backgroundColor:'#653f84',borderRadius:4}]},options:{animation:{duration:0},plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:7},color:'#333'},grid:{display:false}},y:{ticks:{font:{size:7},color:'#333'},grid:{color:'#eee'},title:{display:true,text:'min',font:{size:7},color:'#888'}}}}});
+  }
+<\/script>
+
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=1000,height=750');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 2000);
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cost Budget | SpacePoint</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors:{ primary:'#241134', secondary:'#653f84', light:'#D7D2CB' }, fontFamily:{ sans:['Inter','sans-serif'] } } }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; background:#1a0c27; color:#D7D2CB; }
+    .card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; }
+    .field-input { background:rgba(255,255,255,0.07); border:1px solid rgba(215,210,203,0.14); color:#D7D2CB; border-radius:0.6rem; padding:0.4rem 0.6rem; font-size:0.85rem; width:100%; min-width:6rem; transition:border-color 0.2s; }
+    .field-input:focus { border-color:#653f84; outline:none; box-shadow:0 0 0 2px rgba(101,63,132,0.2); }
+    .calc-cell{ font-size:0.82rem; font-weight:600; color:#c4a0e8; text-align:center; }
+    .subsystem-badge { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:0.18rem 0.5rem; border-radius:9999px; }
+    
+    .status-badge { font-size:0.62rem; font-weight:700; padding:0.15rem 0.45rem; border-radius:9999px; white-space:nowrap; }
+    .status-badge-good { background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.35); }
+    .status-badge-fail { background:rgba(239,68,68,0.2);  color:#fca5a5; border:1px solid rgba(239,68,68,0.35); }
+    .status-badge-warn { background:rgba(245,158,11,0.2); color:#fcd34d; border:1px solid rgba(245,158,11,0.35); }
+
+    .step-active { background:#653f84; color:#fff; }
+    .step-done   { background:rgba(101,63,132,0.5); }
+    .step-future { background:rgba(101,63,132,0.12); color:rgba(215,210,203,0.25); }
+    .calc-row:hover { background:rgba(255,255,255,0.018); }
+    
+    th { background:#1e1030; text-align:center; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:rgba(215,210,203,0.4); padding:0.75rem 0.5rem; position:sticky; top:0; z-index:10; }
+    th:first-child { text-align:left; padding-left:1rem; position:sticky; left:0; z-index:20; }
+    td { padding:0.65rem 0.5rem; border-top:1px solid rgba(215,210,203,0.05); vertical-align:middle; text-align:center; }
+    td:first-child { text-align:left; padding-left:1rem; position:sticky; left:0; z-index:5; background:#1a0c27; }
+
+    .btn-primary { background:linear-gradient(135deg,#653f84,#241134); color:#fff; border:none; border-radius:0.75rem; padding:0.7rem 1.5rem; font-size:0.85rem; font-weight:600; cursor:pointer; transition:opacity 0.2s,transform 0.1s; }
+    .btn-primary:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.35; cursor:not-allowed; }
+    .btn-sec { background:rgba(255,255,255,0.05); border:1px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.7); border-radius:0.75rem; padding:0.7rem 1.25rem; font-size:0.85rem; font-weight:600; cursor:pointer; }
+    .btn-sec:hover { background:rgba(255,255,255,0.09); }
+    
+    ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+  </style>
+</head>
+<body class="h-screen flex flex-col font-sans">
+  
+  <!-- Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between shrink-0" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+      <span id="mission-badge" class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">Loading…</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="window.location.href = '/mass-budget'" class="btn-sec text-xs px-3 py-1.5">← Mass Budget</button>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border hover:bg-white/5" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+    
+  </nav>
+
+  <!-- Progress Stepper -->
+  <div class="px-6 py-4 shrink-0" style="background:rgba(36,17,52,0.5);">
+    <div class="max-w-6xl mx-auto flex items-center gap-0" id="stepper"></div>
+  </div>
+
+  
+
+  <!-- Main -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="max-w-[1400px] mx-auto px-4 py-8 space-y-8">
+
+      <!-- Section A: Mission Summary Bar -->
+      <div id="sec-mission" class="card px-6 py-5 grid grid-cols-2 sm:grid-cols-6 gap-4"></div>
+
+      <!-- Alert -->
+      <div id="alert-banner" class="hidden rounded-xl px-4 py-3 text-sm font-medium"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Section B/D: Constraints & Summaries (LeftCol) -->
+        <div class="lg:col-span-3 space-y-5">
+          <div class="card p-6 space-y-5">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">💸 Budget Constraints</p>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center text-sm">
+                  <span style="color:rgba(215,210,203,0.5);">Max Budget</span>
+                  <span class="font-bold text-lg text-white" id="const-budget">- AED</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+             <div class="card p-5 grid grid-cols-2 gap-4">
+                <div class="col-span-2 border-b pb-2 mb-1" style="border-color:rgba(215,210,203,0.1);">
+                  <p class="text-[10px] font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">Cost Summary</p>
+                </div>
+                <div><p class="text-[10px] text-zinc-500">Total Cost (AED)</p><p class="text-lg font-bold" id="sum-total-cost">-</p></div>
+                <div><p class="text-[10px] text-zinc-500">Cost Margin (AED)</p><p class="text-lg font-bold" id="sum-cost-mar">-</p></div>
+             </div>
+
+             <div class="card p-5">
+                <div class="border-b pb-2 mb-3" style="border-color:rgba(215,210,203,0.1);">
+                  <p class="text-[10px] font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">Most Expensive Part</p>
+                </div>
+                <p class="text-sm font-bold text-white mb-1" id="most-exp-name">-</p>
+                <p class="text-lg font-bold text-red-400" id="most-exp-cost">-</p>
+             </div>
+          </div>
+
+          <!-- Formula Helper -->
+          <details class="card p-4">
+             <summary class="text-xs font-bold uppercase tracking-widest cursor-pointer" style="color:rgba(215,210,203,0.4);">📐 Formulas & Notes</summary>
+             <div class="mt-3 space-y-2 text-[10px]" style="color:rgba(215,210,203,0.55);">
+               <p>🔹 <strong style="color:#c4a0e8;">Total Cost</strong> = Quantity × Cost/Unit</p>
+               <p>🔹 <strong style="color:#c4a0e8;">Cost Margin</strong> = Max Budget - Total Cost</p>
+               <p>🔹 "The most expensive component often has a big effect on total mission cost."</p>
+             </div>
+          </details>
+        </div>
+
+        <!-- Section C: Table + Charts (RightCol) -->
+        <div class="lg:col-span-9 space-y-6">
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs" style="border-collapse:collapse; min-width:1200px;">
+                <thead>
+                  <tr>
+                    <th style="min-width:200px; text-align:left;">Component</th>
+                    <th style="width:80px;">Qty</th>
+                    <th style="width:120px;">Cost/Unit (AED)</th>
+                    <th style="width:120px;">Total (AED)</th>
+                    <th style="width:140px;">Priority</th>
+                    <th style="min-width:150px;">Vendor</th>
+                    <th style="min-width:150px;">Link</th>
+                  </tr>
+                </thead>
+                <tbody id="cost-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Section E: Charts (Larger Layout) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div class="card p-6 flex flex-col items-center">
+                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">⚖️ Cost by Subsystem</p>
+                <div class="w-full h-64 flex justify-center"><canvas id="chart-subsystem"></canvas></div>
+             </div>
+             <div class="card p-6 flex flex-col items-center">
+                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">🎯 Used vs Remaining</p>
+                <div class="w-full h-64 flex justify-center"><canvas id="chart-used"></canvas></div>
+             </div>
+             <div class="card p-6 col-span-1 md:col-span-2">
+                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">📊 Top Components by Cost (AED)</p>
+                <div class="w-full h-64"><canvas id="chart-top"></canvas></div>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-col sm:flex-row gap-3 pb-10">
+        <button class="btn-sec" onclick="window.location.href = '/mass-budget'">← Back to Mass Budget</button>
+        <button class="btn-primary" id="btn-save" onclick="saveBudget()">💾 Save Cost Budget</button>
+        <button class="btn-primary ml-auto" id="btn-next" disabled onclick="goNext()">Finish & Dashboard →</button>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  const API_URL = window.location.origin + '/api';
+  const token = localStorage.getItem('sp_token');
+  const missionId = localStorage.getItem('sp_mission_id');
+  if(!token) window.location.href = '/';
+  if(!missionId) window.location.href = '/mission';
+
+  function logout(){ localStorage.clear(); window.location.href = '/'; }
+
+  // ── Stepper ──────────────────────────────────────────────────────────────────
+  const STEPS=['Create Mission','Components','CONOPS','Data Budget','Power Budget','Link Budget','Mass Budget','Cost Budget','Dashboard'];
+  const CURRENT=8;
+  document.getElementById('stepper').innerHTML=STEPS.map((s,i)=>{
+    const n=i+1,active=n===CURRENT,done=n<CURRENT;
+    const cls=active?'step-active':done?'step-done':'step-future';
+    return `<div class="flex flex-col items-center ${n>8?'opacity-40':''}">
+      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${cls}">${n}</div>
+      <span class="text-xs mt-1 hidden md:block" style="color:${active?'#c4a0e8':done?'rgba(215,210,203,0.55)':'rgba(215,210,203,0.2)'};">${s}</span>
+    </div>${i<STEPS.length-1?`<div class="flex-1 h-0.5 mx-1 mt-3.5 ${done?'bg-secondary':'bg-secondary/20'}"></div>`:''}`;
+  }).join('');
+
+
+  const SC = {
+    'ADCS': { bg:'rgba(59,130,246,0.2)', color:'#60a5fa' },
+    'CDHS': { bg:'rgba(168,85,247,0.2)', color:'#c084fc' },
+    'EPS':  { bg:'rgba(234,179,8,0.2)', color:'#facc15' },
+    'COMMS':{ bg:'rgba(236,72,153,0.2)', color:'#f472b6' },
+    'Payload': { bg:'rgba(16,185,129,0.2)', color:'#34d399' },
+    'Structure': { bg:'rgba(99,102,241,0.2)', color:'#818cf8' },
+    'Thermal': { bg:'rgba(244,63,94,0.2)', color:'#fb7185' }
+  };
+
+  let rows = [];
+  let mission = null;
+  let constraints = null;
+  
+  let cSub, cTop, cUsed;
+
+  async function init(){
+    try{
+      const r = await fetch(`${API_URL}/missions/${missionId}/cost-budget`,{
+        headers:{'Authorization':`Bearer ${token}`}
+      });
+      if(!r.ok) throw new Error('Failed to load cost budget');
+      const data = await fetchSummary();
+      
+      const res = await r.json();
+      mission = res.mission;
+      constraints = res.constraints;
+      rows = res.rows;
+
+      document.getElementById('mission-badge').textContent = mission.mission_name;
+      document.getElementById('const-budget').textContent = `${constraints.maximum_budget_aed.toLocaleString()} AED`;
+      
+      renderTable();
+      updateSummaryUI(data);
+
+    } catch(e) {
+      console.error(e);
+      alert('Error loading cost budget.');
+    }
+  }
+
+  async function fetchSummary(){
+    const r = await fetch(`${API_URL}/missions/${missionId}/cost-budget/summary`, {
+      headers:{'Authorization':`Bearer ${token}`}
+    });
+    return r.json();
+  }
+
+  function renderTable(){
+    const PRIORITIES = ["Critical", "High", "Medium", "Low"];
+    document.getElementById('cost-tbody').innerHTML = rows.map((r,idx)=>{
+      const sc = SC[r.subsystem] || { bg:'rgba(101,63,132,0.3)', color:'#c4a0e8' };
+      
+      let prioOptions = '<option value="">--</option>';
+      PRIORITIES.forEach(p => {
+        prioOptions += `<option value="${p}" ${r.priority===p?'selected':''}>${p}</option>`;
+      });
+
+      return `<tr class="calc-row">
+        <td>
+          <div class="flex items-center gap-2">
+            <img src="${r.image_url||'https://placehold.co/40x40/241134/653f84?text=?'}"
+                 onerror="this.src='https://placehold.co/40x40/241134/653f84?text=?'"
+                 class="w-8 h-8 rounded-lg object-cover shrink-0" />
+            <div>
+              <p class="text-xs font-semibold text-white leading-tight">${r.component_name}</p>
+              <span class="subsystem-badge mt-0.5 inline-block" style="background:${sc.bg};color:${sc.color};">${r.subsystem}</span>
+            </div>
+          </div>
+        </td>
+        <td><input type="number" class="field-input px-2" value="${r.quantity}" min="0" oninput="liveUpdate(${idx},'quantity',this.value)"/></td>
+        <td><input type="number" class="field-input px-2" value="${r.cost_per_unit_aed||0}" step="1" min="0" oninput="liveUpdate(${idx},'cost_per_unit_aed',this.value)"/></td>
+        <td><div class="calc-cell" id="tc-${idx}">${r.total_cost_aed.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></td>
+        <td>
+          <select class="field-input !py-[0.35rem]" onchange="liveUpdate(${idx},'priority',this.value)">
+            ${prioOptions}
+          </select>
+        </td>
+        <td><input type="text" class="field-input px-2 placeholder-zinc-700" placeholder="e.g. Amazon" value="${r.vendor||''}" oninput="liveUpdate(${idx},'vendor',this.value)"/></td>
+        <td><input type="url" class="field-input px-2 placeholder-zinc-700" placeholder="https://" value="${r.purchase_link||''}" oninput="liveUpdate(${idx},'purchase_link',this.value)"/></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function liveUpdate(idx, field, rawValue){
+    let val = rawValue;
+    if(field==='quantity' || field==='cost_per_unit_aed') {
+      val = parseFloat(rawValue) || 0;
+    }
+    rows[idx][field] = val;
+    rows[idx].total_cost_aed = rows[idx].quantity * (rows[idx].cost_per_unit_aed || 0);
+    document.getElementById(`tc-${idx}`).textContent = rows[idx].total_cost_aed.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    
+    // Quick recalculate local summary
+    recalcLocalSummary();
+  }
+
+  function recalcLocalSummary(){
+    let total = 0;
+    let subs = {};
+    let tops = [];
+
+    rows.forEach(r => {
+      total += r.total_cost_aed;
+      if(!subs[r.subsystem]) subs[r.subsystem] = 0;
+      subs[r.subsystem] += r.total_cost_aed;
+      tops.push({ name: r.component_name, cost: r.total_cost_aed, sub: r.subsystem });
+    });
+
+    tops.sort((a,b)=> b.cost - a.cost);
+    const top6 = tops.slice(0,6);
+    
+    const margin = constraints.maximum_budget_aed - total;
+    const isValid = margin >= 0;
+
+    let subArr = Object.keys(subs).map(k=>({subsystem:k, cost:subs[k]})).filter(s=>s.cost>0);
+    
+    let mockData = {
+      budget_status: isValid ? '✅ Within Budget' : '❌ Over Budget',
+      cost_margin_aed: margin,
+      is_valid: isValid,
+      total_platform_cost_aed: total,
+      most_expensive_component: top6.length ? top6[0].name : '-',
+      most_expensive_cost: top6.length ? top6[0].cost : 0,
+      subsystem_totals: subArr,
+      top_components: top6.map(t=>({component_name:t.name, total_cost_aed:t.cost, subsystem:t.sub})),
+      validation_messages: isValid ? ["Mission cost is within the allowed budget."] : [`Mission cost exceeds the maximum budget. Margin: ${margin.toFixed(2)} AED.`]
+    };
+
+    updateSummaryUI(mockData);
+  }
+
+  function updateSummaryUI(data){
+    document.getElementById('sec-mission').innerHTML=`
+      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Mission</p><p class="text-sm font-bold text-white mt-0.5">${mission?.mission_name}</p></div>
+      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Orbit</p><p class="text-sm font-bold text-white mt-0.5">${mission?.orbit_type}</p></div>
+      <div class="flex gap-2 sm:col-span-4 justify-end items-center">
+        <span class="px-3 py-1 rounded-full text-[10px] font-bold ${data.is_valid?'status-badge-good':'status-badge-fail'}">${data.budget_status}</span>
+      </div>
+    `;
+
+    document.getElementById('sum-total-cost').textContent = `${data.total_platform_cost_aed.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} AED`;
+    document.getElementById('sum-cost-mar').textContent = `${data.cost_margin_aed.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} AED`;
+    document.getElementById('sum-cost-mar').className = `text-xl font-bold ${data.is_valid?'text-green-400':'text-red-400'}`;
+
+    document.getElementById('most-exp-name').textContent = data.most_expensive_component || '-';
+    document.getElementById('most-exp-cost').textContent = `${data.most_expensive_cost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} AED`;
+
+    const ab = document.getElementById('alert-banner');
+    ab.classList.remove('hidden');
+    ab.className = `rounded-xl px-4 py-3 text-sm font-medium ${data.is_valid?'status-badge-good':'status-badge-fail'}`;
+    ab.textContent = data.validation_messages.join(' ');
+
+    document.getElementById('btn-next').disabled = !data.is_valid;
+
+    renderCharts(data);
+  }
+
+  function renderCharts(data){
+    Chart.defaults.color='rgba(215,210,203,0.5)';
+    Chart.defaults.font.family='Inter';
+
+    // Subsystem
+    if(cSub) cSub.destroy();
+    cSub = new Chart(document.getElementById('chart-subsystem'),{
+      type:'doughnut',
+      data:{
+        labels: data.subsystem_totals.map(s=>s.subsystem),
+        datasets:[{
+          data: data.subsystem_totals.map(s=>s.cost),
+          backgroundColor: data.subsystem_totals.map(s=>SC[s.subsystem]?.color||'#653f84'),
+          borderWidth:0
+        }]
+      },
+      options:{responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{display:true, position:'bottom', labels:{font:{size:10}, boxWidth:10, padding:15}}}}
+    });
+
+    // Used vs Remaining
+    if(cUsed) cUsed.destroy();
+    let used = data.total_platform_cost_aed;
+    let rem = Math.max(0, data.maximum_budget_aed - used);
+    cUsed = new Chart(document.getElementById('chart-used'),{
+      type:'doughnut',
+      data:{
+        labels: ['Used Budget', 'Remaining'],
+        datasets:[{
+          data: [used, rem],
+          backgroundColor: ['#f472b6', '#34d399'],
+          borderWidth:0
+        }]
+      },
+      options:{responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{display:true, position:'bottom', labels:{font:{size:10}, boxWidth:10, padding:15}}}}
+    });
+
+    // Top
+    if(cTop) cTop.destroy();
+    cTop = new Chart(document.getElementById('chart-top'),{
+      type:'bar',
+      data:{
+        labels: data.top_components.map(t=>t.component_name.substring(0,10)+'...'),
+        datasets:[{
+          label:'Total Cost (AED)',
+          data: data.top_components.map(t=>t.total_cost_aed),
+          backgroundColor: data.top_components.map(t=>SC[t.subsystem]?.color||'#653f84'),
+          borderRadius:4
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          y:{beginAtZero:true, grid:{color:'rgba(255,255,255,0.05)'}},
+          x:{grid:{display:false}, ticks:{font:{size:10}}}
+        }
+      }
+    });
+  }
+
+  async function saveBudget(silent=false){
+    const btn = document.getElementById('btn-save');
+    if(!silent){btn.disabled=true; btn.textContent='Saving...';}
+    try {
+      const payload = {
+        entries: rows.map(r=>({
+          mission_component_id: r.mission_component_id,
+          quantity: r.quantity,
+          cost_per_unit_aed: r.cost_per_unit_aed,
+          vendor: r.vendor,
+          priority: r.priority,
+          purchase_link: r.purchase_link
+        }))
+      };
+      
+      const res = await fetch(`${API_URL}/missions/${missionId}/cost-budget/save`,{
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error('Failed to save');
+      
+      const realSummary = await fetchSummary();
+      updateSummaryUI(realSummary);
+      
+      if(!silent){ btn.textContent='✅ Saved'; setTimeout(()=>btn.textContent='💾 Save Cost Budget',2000); }
+    } catch(e) {
+      if(!silent){ console.error(e); alert(e.message); btn.textContent='💾 Save Cost Budget'; }
+    } finally {
+      if(!silent) btn.disabled=false;
+    }
+  }
+
+  function goNext(){
+    const btn=document.getElementById('btn-next');
+    btn.textContent='Saving…';btn.disabled=true;
+    saveBudget(true).then(()=>{ window.location.href = '/dashboard'; });
+  }
+
+  init();
+</script>
+</body>
+</html>

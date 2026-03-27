@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Choose Components</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#241134', secondary: '#653f84', light: '#D7D2CB' },
+          fontFamily: { sans: ['Inter', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #1a0c27; color: #D7D2CB; }
+    .input-field { background: rgba(255,255,255,0.05); border: 1.5px solid rgba(215,210,203,0.15); color: #D7D2CB; border-radius:0.75rem; padding:0.625rem 1rem; font-size:0.875rem; width:100%; }
+    .input-field:focus { border-color:#653f84; box-shadow:0 0 0 3px rgba(101,63,132,0.25); outline:none; }
+    .input-field::placeholder { color:rgba(215,210,203,0.35); }
+    .card-comp { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.09); transition:all 0.2s; border-radius:1rem; overflow:hidden; }
+    .card-comp:hover { border-color:rgba(101,63,132,0.5); transform:translateY(-2px); box-shadow:0 8px 30px rgba(101,63,132,0.2); }
+    .card-comp.selected { border-color:#653f84; background:rgba(101,63,132,0.08); }
+    .btn-add { background:linear-gradient(135deg,#653f84,#241134); color:#fff; border:none; border-radius:0.625rem; padding:0.5rem 1rem; font-size:0.75rem; font-weight:600; cursor:pointer; transition:opacity 0.2s; width:100%; }
+    .btn-add:hover { opacity:0.85; }
+    .filter-btn { background:rgba(101,63,132,0.15); border:1px solid rgba(101,63,132,0.25); color:rgba(215,210,203,0.6); border-radius:9999px; padding:0.35rem 1rem; font-size:0.75rem; font-weight:600; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    .filter-btn.active { background:#653f84; border-color:#653f84; color:#fff; }
+    .subsystem-badge { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:0.2rem 0.6rem; border-radius:9999px; }
+    .panel { background:rgba(255,255,255,0.03); border-left:1.5px solid rgba(215,210,203,0.09); }
+    .qty-input { background:rgba(255,255,255,0.08); border:1px solid rgba(215,210,203,0.15); color:#D7D2CB; border-radius:0.5rem; padding:0.3rem 0.5rem; width:3.5rem; font-size:0.8rem; text-align:center; }
+    .step-active { background:#653f84; color:#fff; }
+    .step-done { background:rgba(101,63,132,0.5); }
+    .step-future { background:rgba(101,63,132,0.12); color:rgba(215,210,203,0.25); }
+    .step-line-done { background:#653f84; }
+    .step-line-future { background:rgba(101,63,132,0.2); }
+    ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between shrink-0" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.9);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+      <span class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(101,63,132,0.3);color:#c4a0e8;" id="mission-badge">Loading…</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="window.location.href = '/mission'" class="text-xs px-3 py-1.5 rounded-lg border transition-colors hover:bg-white/5" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">← Back</button>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border transition-colors hover:bg-white/5" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Progress Stepper -->
+  <div class="px-6 py-4 shrink-0" style="background:rgba(36,17,52,0.5);">
+    <div class="max-w-6xl mx-auto flex items-center gap-0" id="stepper"></div>
+  </div>
+
+  <!-- Layout -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Component Library -->
+    <div class="flex-1 overflow-y-auto p-6">
+      <div class="max-w-4xl mx-auto">
+        <div class="mb-6">
+          <h1 class="text-xl font-bold text-white mb-1">Choose Components</h1>
+          <p class="text-sm" style="color:rgba(215,210,203,0.5);">Select hardware components from the library and add them to your mission.</p>
+        </div>
+
+        <!-- Search -->
+        <div class="relative mb-4">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style="color:rgba(215,210,203,0.4);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
+          <input type="text" id="search" class="input-field" style="padding-left:2.5rem;" placeholder="Search components by name…" oninput="applyFilters()" />
+        </div>
+
+        <!-- Subsystem Filters -->
+        <div class="flex gap-2 flex-wrap mb-6" id="filters">
+          <button class="filter-btn active" onclick="selectFilter('All',this)">All</button>
+          <button class="filter-btn" onclick="selectFilter('ADCS',this)">ADCS</button>
+          <button class="filter-btn" onclick="selectFilter('CDHS',this)">CDHS</button>
+          <button class="filter-btn" onclick="selectFilter('EPS',this)">EPS</button>
+          <button class="filter-btn" onclick="selectFilter('COMMS',this)">COMMS</button>
+          <button class="filter-btn" onclick="selectFilter('Payload',this)">Payload</button>
+          <button class="filter-btn" onclick="selectFilter('Structure',this)">Structure</button>
+          <button class="filter-btn" onclick="selectFilter('Thermal',this)">Thermal</button>
+        </div>
+
+        <!-- Cards grid -->
+        <div id="components-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        <div id="empty-state" class="hidden text-center py-16" style="color:rgba(215,210,203,0.3);">
+          <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0H4"/></svg>
+          <p class="text-sm">No components found</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selected Panel -->
+    <div class="panel w-80 shrink-0 flex flex-col" style="max-height:calc(100vh - 130px);position:sticky;top:0;">
+      <div class="p-5 border-b" style="border-color:rgba(215,210,203,0.08);">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-white text-sm">Selected Components</h2>
+          <span id="sel-count" class="text-xs px-2 py-0.5 rounded-full font-bold" style="background:rgba(101,63,132,0.4);color:#c4a0e8;">0</span>
+        </div>
+        <p class="text-xs mt-1" style="color:rgba(215,210,203,0.3);">Components added to this mission</p>
+      </div>
+      <div id="selected-panel" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+      <div class="p-4 border-t" style="border-color:rgba(215,210,203,0.08);">
+        <div id="panel-empty" class="text-center py-4" style="color:rgba(215,210,203,0.25);">
+          <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg>
+          <p class="text-xs">No components selected yet</p>
+        </div>
+        <button id="btn-next" onclick="goNext()" class="hidden w-full py-3 rounded-xl text-white font-semibold text-sm" style="background:linear-gradient(135deg,#653f84,#241134);">
+          Continue to CONOPS →
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const API = window.location.origin + '/api';
+    const token = localStorage.getItem('sp_token');
+    const missionId = localStorage.getItem('sp_mission_id');
+    if (!token) window.location.href = '/';
+    if (!missionId) window.location.href = '/mission';
+
+    let allComponents = [];
+    let missionComponents = []; // from DB
+    let activeFilter = 'All';
+
+    // ── Stepper ───────────────────────────────────────────────────────────────
+    const steps = [
+      { label: 'Create Mission', num: 1 },
+      { label: 'Components', num: 2 },
+      { label: 'CONOPS', num: 3 },
+      { label: 'Data Budget', num: 4 },
+      { label: 'Power Budget', num: 5 },
+      { label: 'Link Budget', num: 6 },
+      { label: 'Mass Budget', num: 7 },
+      { label: 'Cost Budget', num: 8 },
+      { label: 'Dashboard', num: 9 },
+    ];
+    const currentStep = 2;
+    const el = document.getElementById('stepper');
+    steps.forEach((s, i) => {
+      const active = s.num === currentStep;
+      const done = s.num < currentStep;
+      const cls = active ? 'step-active' : done ? 'step-done' : 'step-future';
+      el.innerHTML += `
+        <div class="flex flex-col items-center ${s.num > 8 ? 'opacity-40' : ''}">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${cls}">${s.num}</div>
+          <span class="text-xs mt-1 hidden sm:block" style="color:${active?'#c4a0e8':done?'rgba(215,210,203,0.55)':'rgba(215,210,203,0.2)'}">${s.label}</span>
+        </div>
+        ${i < steps.length-1 ? `<div class="flex-1 h-0.5 mx-2 mt-3.5 sm:mt-3.5 ${s.num < currentStep ?'step-line-done':'step-line-future'}"></div>` : ''}
+      `;
+    });
+
+
+    // ── Subsystem color map ───────────────────────────────────────────────────
+    const subsysColors = {
+      ADCS: { bg:'rgba(59,130,246,0.2)', color:'#93c5fd' },
+      CDHS: { bg:'rgba(16,185,129,0.2)', color:'#6ee7b7' },
+      EPS:  { bg:'rgba(245,158,11,0.2)', color:'#fcd34d' },
+      COMMS:{ bg:'rgba(239,68,68,0.2)',  color:'#fca5a5' },
+      Payload:{ bg:'rgba(139,92,246,0.2)',color:'#c4b5fd' },
+      Structure:{ bg:'rgba(156,163,175,0.2)', color:'#d1d5db' },
+      Thermal:{ bg:'rgba(236,72,153,0.2)', color:'#f9a8d4' },
+    };
+
+    function subsysBadge(s) {
+      const c = subsysColors[s] || { bg:'rgba(101,63,132,0.3)', color:'#c4a0e8' };
+      return `<span class="subsystem-badge" style="background:${c.bg};color:${c.color};">${s}</span>`;
+    }
+
+    // ── Load data ─────────────────────────────────────────────────────────────
+    async function init() {
+      const [compRes, mcRes, missionRes] = await Promise.all([
+        fetch(`${API}/components`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/missions/${missionId}/components`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/missions/${missionId}`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      allComponents = await compRes.json();
+      missionComponents = await mcRes.json();
+      const mission = await missionRes.json();
+      document.getElementById('mission-badge').textContent = mission.mission_name;
+      renderCards(allComponents);
+      renderPanel();
+    }
+    init();
+
+    // ── Filters ───────────────────────────────────────────────────────────────
+    function selectFilter(subsys, btn) {
+      activeFilter = subsys;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const search = document.getElementById('search').value.toLowerCase();
+      let filtered = allComponents;
+      if (activeFilter !== 'All') filtered = filtered.filter(c => c.subsystem === activeFilter);
+      if (search) filtered = filtered.filter(c => c.component_name.toLowerCase().includes(search));
+      renderCards(filtered);
+    }
+
+    // ── Render cards ──────────────────────────────────────────────────────────
+    function renderCards(list) {
+      const grid = document.getElementById('components-grid');
+      const empty = document.getElementById('empty-state');
+      if (!list.length) { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      const selectedIds = new Set(missionComponents.map(mc => mc.component_id));
+      grid.innerHTML = list.map(c => {
+        const sel = selectedIds.has(c.id);
+        const mc = missionComponents.find(m => m.component_id === c.id);
+        return `
+        <div class="card-comp ${sel ? 'selected' : ''}" id="card-${c.id}">
+          <div class="relative">
+            <img src="${c.image_url || 'https://placehold.co/400x180/241134/653f84?text=' + encodeURIComponent(c.component_name)}"
+                 alt="${c.component_name}"
+                 class="w-full h-36 object-cover"
+                 onerror="this.src='https://placehold.co/400x180/241134/653f84?text=${encodeURIComponent(c.component_name)}'" />
+            <div class="absolute top-2 left-2">${subsysBadge(c.subsystem)}</div>
+          </div>
+          <div class="p-4 space-y-3">
+            <div>
+              <h3 class="font-bold text-white text-sm leading-tight">${c.component_name}</h3>
+              <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.5);">${c.example_role || ''}</p>
+            </div>
+            <p class="text-xs leading-relaxed" style="color:rgba(215,210,203,0.55);">${(c.scaled_description || '').slice(0,120)}${(c.scaled_description||'').length>120?'…':''}</p>
+
+            <!-- Specs grid -->
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,0.04);">
+                <div class="font-bold text-white">${c.voltage_v ?? '–'}V</div>
+                <div style="color:rgba(215,210,203,0.4);">Voltage</div>
+              </div>
+              <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,0.04);">
+                <div class="font-bold text-white">${c.current_ma ?? '–'}mA</div>
+                <div style="color:rgba(215,210,203,0.4);">Current</div>
+              </div>
+              <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,0.04);">
+                <div class="font-bold text-white">${c.scaled_mass_g ?? '–'}g</div>
+                <div style="color:rgba(215,210,203,0.4);">Mass</div>
+              </div>
+              <div class="rounded-lg p-2 text-center col-span-2" style="background:rgba(255,255,255,0.04);">
+                <div class="font-bold text-white text-xs">${c.scaled_dimensions_mm || '–'}</div>
+                <div style="color:rgba(215,210,203,0.4);">Dimensions (mm)</div>
+              </div>
+              <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,0.04);">
+                <div class="font-bold" style="color:#fcd34d;">$${c.assumed_cost_usd ?? '–'}</div>
+                <div style="color:rgba(215,210,203,0.4);">Cost</div>
+              </div>
+            </div>
+
+            <div class="text-xs rounded-lg p-2" style="background:rgba(255,255,255,0.03);color:rgba(215,210,203,0.5);">${c.key_specs || ''}</div>
+
+            <!-- Add / remove controls -->
+            ${sel ? `
+            <div class="flex items-center gap-2">
+              <span class="text-xs flex-1" style="color:#6ee7b7;">✓ Added (qty: ${mc?.quantity ?? 1})</span>
+              <button onclick="removeComponent('${mc?.id}','${c.id}')" class="text-xs px-3 py-1.5 rounded-lg border transition-colors hover:bg-red-500/10" style="border-color:rgba(239,68,68,0.3);color:#fca5a5;">Remove</button>
+            </div>
+            ` : `
+            <div class="flex items-center gap-2">
+              <input type="number" id="qty-${c.id}" value="1" min="1" max="99" class="qty-input" />
+              <button class="btn-add flex-1" onclick="addComponent('${c.id}')">+ Add to Mission</button>
+            </div>
+            `}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Panel ─────────────────────────────────────────────────────────────────
+    function renderPanel() {
+      const panel = document.getElementById('selected-panel');
+      const empty = document.getElementById('panel-empty');
+      const nextBtn = document.getElementById('btn-next');
+      document.getElementById('sel-count').textContent = missionComponents.length;
+
+      if (!missionComponents.length) {
+        panel.innerHTML = '';
+        empty.classList.remove('hidden');
+        nextBtn.classList.add('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      nextBtn.classList.remove('hidden');
+
+      panel.innerHTML = missionComponents.map(mc => {
+        const c = mc.component;
+        return `
+        <div class="rounded-xl p-3 flex gap-3 items-start" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
+          <img src="${c.image_url || ''}" onerror="this.src='https://placehold.co/48x48/241134/653f84?text=?'" class="w-10 h-10 rounded-lg object-cover shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-white leading-tight truncate">${c.component_name}</p>
+            <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.4);">${subsysBadge(c.subsystem)} × ${mc.quantity}</p>
+          </div>
+          <button onclick="removeComponent('${mc.id}','${c.id}')" class="shrink-0 mt-0.5" style="color:rgba(215,210,203,0.3);font-size:1.1rem;line-height:1;" title="Remove">×</button>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Add component ─────────────────────────────────────────────────────────
+    async function addComponent(componentId) {
+      const qty = parseInt(document.getElementById(`qty-${componentId}`)?.value || '1');
+      try {
+        const res = await fetch(`${API}/missions/${missionId}/components`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ component_id: componentId, quantity: qty })
+        });
+        if (!res.ok) throw await res.json();
+        const mc = await res.json();
+        missionComponents.push(mc);
+        applyFilters();
+        renderPanel();
+      } catch (err) {
+        alert(err.detail || 'Failed to add component');
+      }
+    }
+
+    // ── Remove component ──────────────────────────────────────────────────────
+    async function removeComponent(mcId, componentId) {
+      try {
+        const res = await fetch(`${API}/missions/${missionId}/components/${mcId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok && res.status !== 204) throw await res.json();
+        missionComponents = missionComponents.filter(mc => mc.id !== mcId);
+        applyFilters();
+        renderPanel();
+      } catch (err) {
+        alert(err.detail || 'Failed to remove component');
+      }
+    }
+
+    function goNext() {
+      window.location.href = '/conops';
+    }
+    function logout() { localStorage.clear(); window.location.href = '/'; }
+  </script>
+</body>
+</html>

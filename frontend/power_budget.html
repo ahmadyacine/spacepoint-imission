@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Power Budget</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { primary:'#241134', secondary:'#653f84', light:'#D7D2CB' }, fontFamily:{ sans:['Inter','sans-serif'] } } }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; background:#1a0c27; color:#D7D2CB; }
+    .card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; }
+    .cell-input { background:rgba(255,255,255,0.07); border:1px solid rgba(215,210,203,0.14); color:#D7D2CB; border-radius:0.45rem; padding:0.3rem 0.5rem; font-size:0.78rem; width:5.5rem; text-align:center; transition:border-color 0.2s; }
+    .cell-input:focus { border-color:#653f84; outline:none; box-shadow:0 0 0 2px rgba(101,63,132,0.2); }
+    .cell-input.warn { border-color:rgba(245,158,11,0.5); }
+    .solar-input { background:rgba(101,63,132,0.15); border:2px solid rgba(101,63,132,0.4); color:#D7D2CB; border-radius:0.6rem; padding:0.5rem 0.75rem; font-size:1.1rem; font-weight:700; width:7rem; text-align:center; transition:border-color 0.2s; }
+    .solar-input:focus { border-color:#9b6fc4; outline:none; box-shadow:0 0 0 3px rgba(101,63,132,0.3); }
+    .ro-cell  { font-size:0.78rem; color:rgba(215,210,203,0.65); padding:0.25rem 0.4rem; background:rgba(255,255,255,0.03); border-radius:0.35rem; text-align:center; }
+    .calc-cell{ font-size:0.78rem; font-weight:600; color:#c4a0e8; text-align:center; }
+    .subsystem-badge { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:0.18rem 0.5rem; border-radius:9999px; }
+    .status-pill-ok       { background:rgba(16,185,129,0.2); color:#6ee7b7; font-size:0.68rem; font-weight:700; padding:0.15rem 0.5rem; border-radius:9999px; }
+    .status-pill-missing  { background:rgba(245,158,11,0.2); color:#fcd34d; font-size:0.68rem; font-weight:700; padding:0.15rem 0.5rem; border-radius:9999px; }
+    .status-pill-zero     { background:rgba(239,68,68,0.2);  color:#fca5a5; font-size:0.68rem; font-weight:700; padding:0.15rem 0.5rem; border-radius:9999px; }
+    .status-pill-inactive { background:rgba(156,163,175,0.2);color:#d1d5db; font-size:0.68rem; font-weight:700; padding:0.15rem 0.5rem; border-radius:9999px; }
+    .step-active { background:#653f84; color:#fff; }
+    .step-done   { background:rgba(101,63,132,0.5); }
+    .step-future { background:rgba(101,63,132,0.12); color:rgba(215,210,203,0.25); }
+    th { background:#1e1030; text-align:center; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:rgba(215,210,203,0.4); padding:0.6rem 0.5rem; position:sticky; top:0; z-index:10; white-space:nowrap; }
+    th:first-child { text-align:left; padding-left:0.75rem; position:sticky; left:0; z-index:20; }
+    td { padding:0.5rem 0.45rem; border-top:1px solid rgba(215,210,203,0.05); vertical-align:middle; text-align:center; }
+    td:first-child { text-align:left; padding-left:0.75rem; position:sticky; left:0; z-index:5; background:#1a0c27; }
+    tr.row-warn td:first-child { border-left:2px solid rgba(245,158,11,0.6); }
+    tr:hover td { background:rgba(255,255,255,0.015); }
+    tr:hover td:first-child { background:#1c0e2a; }
+    .btn-primary { background:linear-gradient(135deg,#653f84,#241134); color:#fff; border:none; border-radius:0.75rem; padding:0.7rem 1.5rem; font-size:0.85rem; font-weight:600; cursor:pointer; transition:opacity 0.2s,transform 0.1s; }
+    .btn-primary:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.35; cursor:not-allowed; }
+    .btn-sec { background:rgba(255,255,255,0.05); border:1px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.7); border-radius:0.75rem; padding:0.7rem 1.25rem; font-size:0.85rem; font-weight:600; cursor:pointer; }
+    .btn-sec:hover { background:rgba(255,255,255,0.09); }
+    .formula-box { background:rgba(101,63,132,0.1); border:1px solid rgba(101,63,132,0.25); border-radius:0.75rem; padding:1rem 1.25rem; }
+    .status-ok   { background:rgba(16,185,129,0.15); color:#6ee7b7; border:1px solid rgba(16,185,129,0.3); }
+    .status-warn { background:rgba(245,158,11,0.15); color:#fcd34d; border:1px solid rgba(245,158,11,0.3); }
+    .status-bad  { background:rgba(239,68,68,0.15);  color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+    .solar-card-highlight { background:rgba(101,63,132,0.15); border:1.5px solid rgba(101,63,132,0.4); border-radius:1rem; }
+    ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between shrink-0" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+      <span id="mission-badge" class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">Loading…</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="window.location.href = '/data-budget'" class="btn-sec text-xs px-3 py-1.5">← Data Budget</button>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Stepper -->
+  <div class="px-6 py-4 shrink-0" style="background:rgba(36,17,52,0.5);">
+    <div class="max-w-6xl mx-auto flex items-center gap-0" id="stepper"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+
+      <!-- Section A: Mission Summary -->
+      <div id="sec-mission" class="card px-6 py-5 grid grid-cols-2 sm:grid-cols-6 gap-4"></div>
+
+      <!-- Alert Banner -->
+      <div id="alert-banner" class="hidden rounded-xl px-4 py-3 text-sm font-medium"></div>
+
+      <!-- Formula Helper -->
+      <div class="formula-box">
+        <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:#c4a0e8;">⚡ How Power Budget Works</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs" style="color:rgba(215,210,203,0.65);">
+          <div>📐 <strong style="color:#D7D2CB;">Power (mW)</strong> = Voltage (V) × Current (mA)</div>
+          <div>⏱️ <strong style="color:#D7D2CB;">Energy/Orbit (mWh)</strong> = Power × Active Time ÷ 60</div>
+          <div>📅 <strong style="color:#D7D2CB;">Energy/Day (mWh)</strong> = Energy/Orbit × Orbits per Day</div>
+          <div>🔢 <strong style="color:#D7D2CB;">Required Solar Cells</strong> = ⌈Total Power (W) ÷ Power per Cell (W)⌉</div>
+          <div>☀️ <strong style="color:#D7D2CB;">Generated Power (W)</strong> = Selected Cells × Power per Cell</div>
+          <div>⚖️ <strong style="color:#D7D2CB;">Power Margin (W)</strong> = Generated Power − Total Consumption</div>
+        </div>
+      </div>
+
+      <!-- Section B: EPS Table -->
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">EPS / Power Budget Table</h2>
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full" style="border-collapse:collapse;min-width:900px;">
+              <thead><tr>
+                <th style="min-width:190px;text-align:left;">Component</th>
+                <th>Voltage (V)</th>
+                <th>Current (mA)</th>
+                <th>Power (mW)</th>
+                <th>Status</th>
+                <th>Active Time (min)</th>
+                <th>Energy/Orbit (mWh)</th>
+              </tr></thead>
+              <tbody id="power-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section C: Solar Sizing -->
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.4);">☀️ Solar Panel Sizing</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- Left: Solar figures -->
+          <div class="grid grid-cols-2 gap-3">
+            <!-- Power per cell -->
+            <div class="card px-4 py-4">
+              <p class="text-xs font-semibold" style="color:rgba(215,210,203,0.4);">Power per Solar Cell</p>
+              <p class="text-2xl font-bold text-white mt-1" id="cell-power-display">1.1 W</p>
+              <p class="text-xs mt-1" style="color:rgba(215,210,203,0.3);">Fixed admin value</p>
+            </div>
+            <!-- Generated power -->
+            <div class="card px-4 py-4">
+              <p class="text-xs font-semibold" style="color:rgba(215,210,203,0.4);">Generated Power</p>
+              <p class="text-2xl font-bold mt-1" style="color:#6ee7b7;" id="gen-power-display">0 W</p>
+              <p class="text-xs mt-1" style="color:rgba(215,210,203,0.3);">Selected Cells × Cell Power</p>
+            </div>
+            <!-- Total power consumed -->
+            <div class="card px-4 py-4">
+              <p class="text-xs font-semibold" style="color:rgba(215,210,203,0.4);">Total Consumption</p>
+              <p class="text-2xl font-bold mt-1" style="color:#fca5a5;" id="total-w-display">0 W</p>
+              <p class="text-xs mt-1" style="color:rgba(215,210,203,0.3);">From all components</p>
+            </div>
+            <!-- Power margin -->
+            <div class="card px-4 py-4">
+              <p class="text-xs font-semibold" style="color:rgba(215,210,203,0.4);">Power Margin</p>
+              <p class="text-2xl font-bold mt-1" id="margin-display">0 W</p>
+              <p class="text-xs mt-1" style="color:rgba(215,210,203,0.3);">Generated − Consumed</p>
+            </div>
+          </div>
+
+          <!-- Right: Student input + status -->
+          <div class="solar-card-highlight p-6 flex flex-col justify-between gap-5">
+            <div>
+              <p class="text-sm font-bold uppercase tracking-widest mb-1" style="color:#c4a0e8;">Your Solar Panel Design</p>
+              <p class="text-xs mb-4" style="color:rgba(215,210,203,0.45);">Enter the number of solar cells you want to include in your mission design. The system will calculate if it's enough to power all selected components.</p>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs font-bold uppercase tracking-widest block mb-2" style="color:rgba(215,210,203,0.55);">Selected Number of Solar Cells <span style="color:#c4a0e8;">(your design)</span></label>
+                <div class="flex items-center gap-4">
+                  <input type="number" id="selected-cells-input" class="solar-input" value="0" min="0" step="1" oninput="onSolarCellsChange()" />
+                </div>
+              </div>
+              <!-- Status badge -->
+              <div id="solar-status-banner" class="rounded-xl px-4 py-3 text-sm font-semibold status-warn">
+                Enter the number of solar cells to check your power budget.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Section D: Power Summary Cards -->
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Power Summary</h2>
+        <div id="summary-cards" class="grid grid-cols-2 sm:grid-cols-5 gap-3"></div>
+      </div>
+
+      <!-- Section E: Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card p-5 flex flex-col">
+          <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Power by Subsystem</p>
+          <div class="flex-1 flex items-center justify-center" style="min-height:200px;"><canvas id="chart-donut"></canvas></div>
+        </div>
+        <div class="card p-5 flex flex-col">
+          <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Top Components by Energy/Orbit</p>
+          <div class="flex-1 flex items-center justify-center" style="min-height:200px;"><canvas id="chart-bar"></canvas></div>
+        </div>
+        <div class="card p-5 flex flex-col">
+          <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Generated vs Consumed Power</p>
+          <div class="flex-1 flex items-center justify-center" style="min-height:200px;"><canvas id="chart-avail"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Subsystem breakdown bars -->
+      <div class="card p-5">
+        <p class="text-xs font-bold uppercase tracking-widest mb-4" style="color:rgba(215,210,203,0.4);">Power by Subsystem (mW)</p>
+        <div id="subsys-bars" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+      </div>
+
+      <!-- Section F: Actions -->
+      <div class="flex flex-col sm:flex-row gap-3 pb-10">
+        <button class="btn-sec" onclick="window.location.href = '/data-budget'">← Back to Data Budget</button>
+        <button class="btn-primary" id="btn-save" onclick="saveBudget()">💾 Save Power Budget</button>
+        <button class="btn-primary ml-auto" id="btn-next" disabled onclick="goNext()">Continue to Link Budget →</button>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  const API = window.location.origin + '/api';
+  const token = localStorage.getItem('sp_token');
+  const missionId = localStorage.getItem('sp_mission_id');
+  if (!token) window.location.href = '/';
+  if (!missionId) window.location.href = '/mission';
+
+  // ── Stepper ─────────────────────────────────────────────────────────────────
+  const STEPS = ['Create Mission','Components','CONOPS','Data Budget','Power Budget','Link Budget','Mass Budget','Cost Budget','Dashboard'];
+  const CURRENT = 5;
+  document.getElementById('stepper').innerHTML = STEPS.map((s,i)=>{
+    const n=i+1, active=n===CURRENT, done=n<CURRENT;
+    const cls=active?'step-active':done?'step-done':'step-future';
+    const lCls=done?'bg-secondary':'bg-secondary/20';
+    return `<div class="flex flex-col items-center ${n>8?'opacity-40':''}">
+      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${cls}">${n}</div>
+      <span class="text-xs mt-1 hidden md:block" style="color:${active?'#c4a0e8':done?'rgba(215,210,203,0.55)':'rgba(215,210,203,0.2)'};">${s}</span>
+    </div>${i<STEPS.length-1?`<div class="flex-1 h-0.5 mx-1 mt-3.5 ${lCls}"></div>`:''}`;
+  }).join('');
+
+  // ── Color palette ────────────────────────────────────────────────────────────
+  const SC={ADCS:{bg:'rgba(59,130,246,0.2)',color:'#93c5fd'},CDHS:{bg:'rgba(16,185,129,0.2)',color:'#6ee7b7'},EPS:{bg:'rgba(245,158,11,0.2)',color:'#fcd34d'},COMMS:{bg:'rgba(239,68,68,0.2)',color:'#fca5a5'},Payload:{bg:'rgba(139,92,246,0.2)',color:'#c4b5fd'},Structure:{bg:'rgba(156,163,175,0.2)',color:'#d1d5db'},Thermal:{bg:'rgba(236,72,153,0.2)',color:'#f9a8d4'}};
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  let mission=null, rows=[], powerPerCell=1.1, selectedCells=0;
+  let cDonut=null,cBar=null,cAvail=null;
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  async function init() {
+    const [mRes,rRes,sRes] = await Promise.all([
+      fetch(`${API}/missions/${missionId}`,{headers:{Authorization:`Bearer ${token}`}}),
+      fetch(`${API}/missions/${missionId}/power-budget`,{headers:{Authorization:`Bearer ${token}`}}),
+      fetch(`${API}/missions/${missionId}/power-budget/summary`,{headers:{Authorization:`Bearer ${token}`}}),
+    ]);
+    if(!mRes.ok){alert('Could not load mission');return;}
+    mission = await mRes.json();
+    rows = await rRes.json();
+    rows.forEach((r, i) => {
+      if (i < 3 && !r.is_saved) {
+        r.voltage_v = 0;
+        r.current_ma = 0;
+        r.power_mw = 0;
+        r.energy_per_orbit_mwh = 0;
+      }
+    });
+
+    if(sRes.ok){
+      const sum = await sRes.json();
+      powerPerCell = sum.power_per_solar_cell_w || 1.1;
+      selectedCells = sum.selected_solar_cells || 0;
+      document.getElementById('selected-cells-input').value = selectedCells;
+    }
+
+    document.getElementById('mission-badge').textContent = mission.mission_name;
+    document.getElementById('cell-power-display').textContent = powerPerCell + ' W';
+    renderMissionBar();
+    renderTable();
+    recalcAll();
+  }
+  init();
+
+  // ── Mission bar ──────────────────────────────────────────────────────────────
+  function renderMissionBar(){
+    const active=rows.filter(r=>r.power_mw>0).length;
+    document.getElementById('sec-mission').innerHTML=[
+      {label:'Mission',value:mission.mission_name},
+      {label:'Orbit Type',value:mission.orbit_type},
+      {label:'Orbit Duration',value:`${mission.orbit_duration_min} min`},
+      {label:'Orbits / Day',value:mission.orbits_per_day},
+      {label:'Components',value:rows.length},
+      {label:'Power-Active',value:`${active} components`},
+    ].map(it=>`<div>
+      <p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">${it.label}</p>
+      <p class="text-sm font-bold text-white mt-0.5">${it.value}</p>
+    </div>`).join('');
+  }
+
+  // ── Table ────────────────────────────────────────────────────────────────────
+  function pillClass(s){return s==='OK'?'status-pill-ok':s==='Inactive'?'status-pill-inactive':s==='Missing Input'?'status-pill-missing':'status-pill-zero';}
+
+  function renderTable(){
+    document.getElementById('power-tbody').innerHTML=rows.map((r,idx)=>{
+      const sc=SC[r.subsystem]||{bg:'rgba(101,63,132,0.3)',color:'#c4a0e8'};
+      const warn=r.active_time_per_orbit_min>0&&(r.voltage_v===0||r.current_ma===0);
+      const pSt=rowStatus(r.voltage_v,r.current_ma,r.active_time_per_orbit_min);
+      const pMW=r.voltage_v*r.current_ma;
+      const eMWh=pMW*r.active_time_per_orbit_min/60;
+      return `<tr id="row-${idx}" class="${warn?'row-warn':''}">
+        <td>
+          <div class="flex items-center gap-2">
+            <img src="${r.image_url||'https://placehold.co/36x36/241134/653f84?text=?'}" onerror="this.src='https://placehold.co/36x36/241134/653f84?text=?'" class="w-8 h-8 rounded-lg object-cover shrink-0"/>
+            <div>
+              <p class="text-xs font-semibold text-white leading-tight">${r.component_name}</p>
+              <span class="subsystem-badge mt-0.5 inline-block" style="background:${sc.bg};color:${sc.color};">${r.subsystem}</span>
+            </div>
+          </div>
+        </td>
+        <td><input type="number" class="cell-input ${warn&&r.voltage_v===0?'warn':''}" id="v-${idx}" value="${(idx < 3 && !r.is_saved) ? '' : r.voltage_v}" min="0" step="0.01" oninput="onRowChange(${idx})"/></td>
+        <td><input type="number" class="cell-input ${warn&&r.current_ma===0?'warn':''}" id="i-${idx}" value="${(idx < 3 && !r.is_saved) ? '' : r.current_ma}" min="0" step="0.1" oninput="onRowChange(${idx})"/></td>
+        <td><div class="calc-cell" id="p-${idx}">${pMW.toFixed(2)}</div></td>
+        <td><span class="${pillClass(pSt)}" id="st-${idx}">${pSt}</span></td>
+        <td><div class="ro-cell ${r.active_time_per_orbit_min===0?'text-yellow-400/50':''}">${r.active_time_per_orbit_min.toFixed(2)}</div></td>
+        <td><div class="calc-cell" id="e-${idx}">${eMWh.toFixed(3)}</div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function rowStatus(v,i,at){
+    if(at===0) return 'Inactive';
+    if(v===0&&i===0) return 'Missing Input';
+    if(v===0||i===0) return 'Zero Power';
+    return 'OK';
+  }
+
+  function onRowChange(idx){
+    const r=rows[idx];
+    r.voltage_v=parseFloat(document.getElementById(`v-${idx}`).value)||0;
+    r.current_ma=parseFloat(document.getElementById(`i-${idx}`).value)||0;
+    const pMW=r.voltage_v*r.current_ma;
+    const eMWh=pMW*r.active_time_per_orbit_min/60;
+    r.power_mw=pMW; r.energy_per_orbit_mwh=eMWh;
+    const st=rowStatus(r.voltage_v,r.current_ma,r.active_time_per_orbit_min);
+    r.power_status=st;
+    document.getElementById(`p-${idx}`).textContent=pMW.toFixed(2);
+    document.getElementById(`e-${idx}`).textContent=eMWh.toFixed(3);
+    const stEl=document.getElementById(`st-${idx}`);
+    stEl.className=pillClass(st); stEl.textContent=st;
+    const warn=r.active_time_per_orbit_min>0&&(r.voltage_v===0||r.current_ma===0);
+    document.getElementById(`row-${idx}`)?.classList.toggle('row-warn',warn);
+    recalcAll();
+  }
+
+  function onSolarCellsChange(){
+    selectedCells = parseInt(document.getElementById('selected-cells-input').value) || 0;
+    recalcAll();
+  }
+
+  // ── Recalc ───────────────────────────────────────────────────────────────────
+  function recalcAll(){
+    let totalMW=0, totalE=0;
+    const subsysPow={};
+    rows.forEach(r=>{
+      totalMW+=r.power_mw; totalE+=r.energy_per_orbit_mwh;
+      subsysPow[r.subsystem]=(subsysPow[r.subsystem]||0)+r.power_mw;
+    });
+    const totalW = totalMW/1000;
+    const totalEDay = totalE * mission.orbits_per_day;
+
+    // Solar
+    const genPowerW = selectedCells * powerPerCell;
+    const marginW = genPowerW - totalW;
+    const isValid = marginW >= 0 && selectedCells >= 0;
+
+    // Update solar section displays
+    document.getElementById('gen-power-display').textContent = genPowerW.toFixed(2) + ' W';
+    document.getElementById('total-w-display').textContent = totalW.toFixed(3) + ' W';
+
+    const marginEl = document.getElementById('margin-display');
+    marginEl.textContent = (marginW >= 0 ? '+' : '') + marginW.toFixed(3) + ' W';
+    marginEl.style.color = marginW > 0 ? '#6ee7b7' : marginW === 0 ? '#fcd34d' : '#fca5a5';
+
+    // Solar status banner
+    const bannerEl = document.getElementById('solar-status-banner');
+    if(selectedCells === 0 && totalW === 0) {
+      bannerEl.className = 'rounded-xl px-4 py-3 text-sm font-semibold status-warn';
+      bannerEl.textContent = '⚡ Enter voltage/current in the table, then choose your solar cell count.';
+    } else if(selectedCells === 0) {
+      bannerEl.className = 'rounded-xl px-4 py-3 text-sm font-semibold status-warn';
+      bannerEl.textContent = '☀️ Enter the number of solar cells you want to include in your design.';
+    } else if(marginW > 0) {
+      bannerEl.className = 'rounded-xl px-4 py-3 text-sm font-semibold status-ok';
+      bannerEl.innerHTML = `✅ <strong>Enough Power</strong> — Your ${selectedCells} solar cells generate ${genPowerW.toFixed(2)} W, which exceeds the ${totalW.toFixed(3)} W required. Margin: +${marginW.toFixed(3)} W.`;
+    } else if(marginW === 0) {
+      bannerEl.className = 'rounded-xl px-4 py-3 text-sm font-semibold status-warn';
+      bannerEl.innerHTML = `⚖️ <strong>Exactly Matched</strong> — Your solar cells exactly match consumption. Consider adding 1 more cell for safety.`;
+    } else {
+      bannerEl.className = 'rounded-xl px-4 py-3 text-sm font-semibold status-bad';
+      bannerEl.innerHTML = `❌ <strong>Not Enough Power</strong> — You need at least <strong>${reqCells} solar cells</strong>, but selected only ${selectedCells}. Deficit: ${Math.abs(marginW).toFixed(3)} W.`;
+    }
+
+    // Alert banner for missing data
+    const alertEl = document.getElementById('alert-banner');
+    const missingInputs = rows.filter(r=>r.active_time_per_orbit_min>0 && (r.voltage_v===0||r.current_ma===0));
+    if(missingInputs.length > 0){
+      alertEl.classList.remove('hidden');
+      alertEl.className = 'rounded-xl px-4 py-3 text-sm font-medium status-warn';
+      alertEl.textContent = `⚠️ ${missingInputs.length} active component(s) are missing voltage or current values. Please fill in all inputs.`;
+    } else {
+      alertEl.classList.add('hidden');
+    }
+
+    renderSummaryCards(totalMW, totalW, totalE, totalEDay);
+    renderSubsysBars(subsysPow);
+    updateCharts(subsysPow, rows, totalW, genPowerW);
+    document.getElementById('btn-next').disabled = !isValid || selectedCells === 0;
+  }
+
+  // ── Summary cards ────────────────────────────────────────────────────────────
+  function renderSummaryCards(mw,w,eOrbit,eDay){
+    document.getElementById('summary-cards').innerHTML=`
+      <div class="card px-4 py-4">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Total Power (mW)</p>
+        <p class="text-xl font-bold text-white mt-1">${mw.toFixed(1)}</p>
+        <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.35);">mW</p>
+      </div>
+      <div class="card px-4 py-4">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Total Power (W)</p>
+        <p class="text-xl font-bold text-white mt-1">${w.toFixed(3)}</p>
+        <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.35);">W</p>
+      </div>
+      <div class="card px-4 py-4">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Energy / Orbit</p>
+        <p class="text-xl font-bold mt-1" style="color:#c4a0e8;">${eOrbit.toFixed(2)}</p>
+        <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.35);">mWh</p>
+      </div>
+      <div class="card px-4 py-4">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Orbits / Day</p>
+        <p class="text-xl font-bold text-white mt-1">${mission.orbits_per_day}</p>
+      </div>
+      <div class="card px-4 py-4">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Energy / Day</p>
+        <p class="text-xl font-bold mt-1" style="color:#93c5fd;">${eDay.toFixed(1)}</p>
+        <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.35);">mWh</p>
+      </div>`;
+  }
+
+  // ── Subsystem bars ───────────────────────────────────────────────────────────
+  function renderSubsysBars(totals){
+    const mx=Math.max(...Object.values(totals),0.001);
+    document.getElementById('subsys-bars').innerHTML=Object.entries(totals)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([sub,mw])=>{
+        const sc=SC[sub]||{bg:'rgba(101,63,132,0.3)',color:'#c4a0e8'};
+        const pct=(mw/mx*100).toFixed(1);
+        return `<div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="subsystem-badge" style="background:${sc.bg};color:${sc.color};">${sub}</span>
+            <span class="font-bold text-white">${mw.toFixed(1)} mW</span>
+          </div>
+          <div class="w-full rounded-full h-1.5" style="background:rgba(215,210,203,0.07);">
+            <div class="h-1.5 rounded-full" style="width:${pct}%;background:${sc.color};"></div>
+          </div>
+        </div>`;
+      }).join('');
+  }
+
+  // ── Charts ───────────────────────────────────────────────────────────────────
+  function updateCharts(subsysPow, rowList, totalW, genW){
+    // Donut – power by subsystem
+    if(cDonut)cDonut.destroy();
+    const dCtx=document.getElementById('chart-donut').getContext('2d');
+    const subLbls=Object.keys(subsysPow);
+    cDonut=new Chart(dCtx,{type:'doughnut',data:{labels:subLbls,datasets:[{data:Object.values(subsysPow),backgroundColor:subLbls.map(s=>SC[s]?.color||'#c4a0e8'),borderWidth:0}]},options:{responsive:true,cutout:'65%',plugins:{legend:{labels:{color:'rgba(215,210,203,0.6)',font:{size:10},boxWidth:10}}}}});
+
+    // Bar – top energy/orbit
+    if(cBar)cBar.destroy();
+    const bCtx=document.getElementById('chart-bar').getContext('2d');
+    const sorted=[...rowList].sort((a,b)=>b.energy_per_orbit_mwh-a.energy_per_orbit_mwh).slice(0,6);
+    cBar=new Chart(bCtx,{type:'bar',data:{labels:sorted.map(r=>r.component_name.split(' ').slice(0,2).join(' ')),datasets:[{data:sorted.map(r=>r.energy_per_orbit_mwh),backgroundColor:sorted.map(r=>SC[r.subsystem]?.color||'#c4a0e8'),borderRadius:6,borderWidth:0}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'rgba(215,210,203,0.5)',font:{size:9}},grid:{display:false}},y:{ticks:{color:'rgba(215,210,203,0.5)',font:{size:9}},grid:{color:'rgba(215,210,203,0.05)'},title:{display:true,text:'mWh',color:'rgba(215,210,203,0.3)',font:{size:9}}}}}});
+
+    // Doughnut – Generated vs Consumed
+    if(cAvail)cAvail.destroy();
+    const aCtx=document.getElementById('chart-avail').getContext('2d');
+    const consumed = Math.min(totalW, genW > 0 ? genW : totalW);
+    const available = Math.max(genW - totalW, 0);
+    const deficit = genW < totalW ? totalW - genW : 0;
+    const chartData = genW > 0
+      ? {labels:['Consumed (W)','Margin (W)'],data:[consumed, available],colors:['#ef4444','#16a34a']}
+      : {labels:['Consumed (W)','Deficit (W)'],data:[totalW, deficit||0.001],colors:['#ef4444','#374151']};
+    cAvail=new Chart(aCtx,{type:'doughnut',data:{labels:chartData.labels,datasets:[{data:chartData.data,backgroundColor:chartData.colors,borderWidth:0}]},options:{responsive:true,cutout:'60%',plugins:{legend:{labels:{color:'rgba(215,210,203,0.6)',font:{size:10},boxWidth:10}}}}});
+  }
+
+  // ── Save ─────────────────────────────────────────────────────────────────────
+  async function saveBudget(silent=false){
+    const btn=document.getElementById('btn-save');
+    if(!silent){btn.textContent='Saving…';btn.disabled=true;}
+    selectedCells = parseInt(document.getElementById('selected-cells-input').value) || 0;
+    const entries=rows.map(r=>({mission_component_id:r.mission_component_id,voltage_v:r.voltage_v,current_ma:r.current_ma,notes:null}));
+    try{
+      const res=await fetch(`${API}/missions/${missionId}/power-budget/save`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+        body:JSON.stringify({entries, selected_solar_cells: selectedCells})
+      });
+      if(!res.ok)throw new Error((await res.json()).detail||'Save failed');
+      if(!silent){
+        btn.textContent='✓ Saved!';btn.style.background='linear-gradient(135deg,#16a34a,#15803d)';
+        setTimeout(()=>{btn.textContent='💾 Save Power Budget';btn.style.background='';btn.disabled=false;},2000);
+      }
+    }catch(err){
+      if(!silent) alert(err.message);
+      if(!silent){btn.textContent='💾 Save Power Budget';btn.disabled=false;}
+    }
+  }
+
+  function goNext(){
+    const btn=document.getElementById('btn-next');
+    btn.textContent='Saving…';btn.disabled=true;
+    saveBudget(true).then(()=>{ window.location.href = '/link-budget'; });
+  }
+  function logout(){localStorage.clear();window.location.href = '/';}
+</script>
+</body>
+</html>

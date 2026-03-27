@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Data Budget</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { primary:'#241134', secondary:'#653f84', light:'#D7D2CB' }, fontFamily: { sans:['Inter','sans-serif'] } } }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; background:#1a0c27; color:#D7D2CB; }
+    .card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; }
+    .cell-input {
+      background:rgba(255,255,255,0.07); border:1px solid rgba(215,210,203,0.14);
+      color:#D7D2CB; border-radius:0.45rem; padding:0.3rem 0.5rem;
+      font-size:0.78rem; width:100%; transition:border-color 0.2s;
+    }
+    .cell-input:focus { border-color:#653f84; outline:none; box-shadow:0 0 0 2px rgba(101,63,132,0.2); }
+    .cell-input::placeholder { color:rgba(215,210,203,0.25); }
+    .cell-select { background:rgba(255,255,255,0.07); border:1px solid rgba(215,210,203,0.14); color:#D7D2CB; border-radius:0.45rem; padding:0.3rem 0.4rem; font-size:0.75rem; width:100%; }
+    .cell-select option { background:#241134; }
+    .ro-cell { font-size:0.78rem; color:rgba(215,210,203,0.7); padding:0.25rem 0.4rem; background:rgba(255,255,255,0.03); border-radius:0.35rem; text-align:center; }
+    .calc-cell { font-size:0.78rem; font-weight:600; color:#c4a0e8; padding:0.25rem 0.4rem; text-align:center; }
+    .subsystem-badge { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:0.18rem 0.5rem; border-radius:9999px; }
+    .row-warn td { border-left:2px solid rgba(245,158,11,0.6) !important; }
+    .step-active { background:#653f84; color:#fff; }
+    .step-done   { background:rgba(101,63,132,0.5); }
+    .step-future { background:rgba(101,63,132,0.12); color:rgba(215,210,203,0.25); }
+    .step-line-done   { background:#653f84; }
+    .step-line-future { background:rgba(101,63,132,0.2); }
+    .btn-primary { background:linear-gradient(135deg,#653f84,#241134); color:#fff; border:none; border-radius:0.75rem; padding:0.7rem 1.5rem; font-size:0.85rem; font-weight:600; cursor:pointer; transition:opacity 0.2s,transform 0.1s; }
+    .btn-primary:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.35; cursor:not-allowed; }
+    .btn-sec { background:rgba(255,255,255,0.05); border:1px solid rgba(215,210,203,0.15); color:rgba(215,210,203,0.7); border-radius:0.75rem; padding:0.7rem 1.25rem; font-size:0.85rem; font-weight:600; cursor:pointer; }
+    .btn-sec:hover { background:rgba(255,255,255,0.09); }
+    th { background:#1e1030; text-align:center; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:rgba(215,210,203,0.4); padding:0.6rem 0.5rem; position:sticky; top:0; z-index:10; white-space:nowrap; }
+    th:first-child { text-align:left; padding-left:0.75rem; position:sticky; left:0; z-index:20; }
+    td { padding:0.5rem 0.45rem; border-top:1px solid rgba(215,210,203,0.05); vertical-align:middle; }
+    td:first-child { position:sticky; left:0; z-index:5; background:#1a0c27; }
+    tr:hover td { background:rgba(255,255,255,0.015); }
+    tr:hover td:first-child { background:#1c0e2a; }
+    ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+    .status-ok   { background:rgba(16,185,129,0.15); color:#6ee7b7; border:1px solid rgba(16,185,129,0.3); }
+    .status-warn { background:rgba(245,158,11,0.15); color:#fcd34d; border:1px solid rgba(245,158,11,0.3); }
+    .status-bad  { background:rgba(239,68,68,0.15);  color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Nav -->
+  <nav class="border-b px-6 py-4 flex items-center justify-between shrink-0" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-3">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
+      <span id="mission-badge" class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">Loading…</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="window.location.href = '/conops'" class="btn-sec text-xs px-3 py-1.5">← CONOPS</button>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border hover:bg-white/5" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Stepper -->
+  <div class="px-6 py-4 shrink-0" style="background:rgba(36,17,52,0.5);">
+    <div class="max-w-6xl mx-auto flex items-center gap-0" id="stepper"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+
+      <!-- Section A: Mission Summary -->
+      <div id="sec-mission" class="card px-6 py-5 grid grid-cols-2 sm:grid-cols-6 gap-4"></div>
+
+      <!-- Alert banner -->
+      <div id="alert-banner" class="hidden rounded-xl px-4 py-3 text-sm font-medium"></div>
+
+      <!-- Section B: Storage Constraint Cards -->
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Storage Constraints</h2>
+        <div id="storage-cards" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+      </div>
+
+      <!-- Section C: Data Budget Table -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">Data Budget Table</h2>
+          <span class="text-xs" style="color:rgba(215,210,203,0.3);">Yellow rows have missing required fields</span>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full" style="border-collapse:collapse;min-width:1100px;">
+              <thead><tr>
+                <th style="min-width:200px;text-align:left;">Component</th>
+                <th>Data Type</th>
+                <th>Size/Meas (KB)</th>
+                <th>Meas/Min</th>
+                <th>Active Time (min)</th>
+                <th>Data/Orbit (KB)</th>
+                <th>Orbits/Day</th>
+                <th>Data/Day (KB)</th>
+                <th>Priority</th>
+                <th>Stored / Sent</th>
+              </tr></thead>
+              <tbody id="budget-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section D + E: Summary + Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Summary cards -->
+        <div class="space-y-4">
+          <h2 class="text-sm font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">Summary</h2>
+          <div id="summary-cards" class="space-y-3"></div>
+        </div>
+        <!-- Doughnut: data by subsystem -->
+        <div class="card p-5 flex flex-col">
+          <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Data/Day by Subsystem</p>
+          <div class="flex-1 flex items-center justify-center" style="min-height:200px;"><canvas id="chart-donut"></canvas></div>
+        </div>
+        <!-- Bar: top components -->
+        <div class="card p-5 flex flex-col">
+          <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Top Components by Data/Day</p>
+          <div class="flex-1 flex items-center justify-center" style="min-height:200px;"><canvas id="chart-bar"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Stored vs Sent pie -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div class="card p-5 flex flex-col items-center">
+          <p class="text-xs font-bold uppercase tracking-widest mb-3 self-start" style="color:rgba(215,210,203,0.4);">Stored vs Sent Distribution</p>
+          <canvas id="chart-pie" style="max-height:220px;"></canvas>
+        </div>
+        <div class="card p-5">
+          <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Subsystem Data Breakdown</p>
+          <div id="subsys-bars" class="space-y-3 mt-2"></div>
+        </div>
+      </div>
+
+      <!-- Section F: Actions -->
+      <div class="flex flex-col sm:flex-row gap-3 pb-10">
+        <button class="btn-sec" onclick="window.location.href = '/conops'">← Back to CONOPS</button>
+        <button class="btn-primary" id="btn-save" onclick="saveBudget()">💾 Save Data Budget</button>
+        <button class="btn-primary ml-auto" id="btn-next" disabled onclick="goNext()">Continue to Power Budget →</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const API = window.location.origin + '/api';
+  const token = localStorage.getItem('sp_token');
+  const missionId = localStorage.getItem('sp_mission_id');
+  if (!token) window.location.href = '/';
+  if (!missionId) window.location.href = '/mission';
+
+  // ── Stepper ────────────────────────────────────────────────────────────────
+  const STEPS = ['Create Mission','Components','CONOPS','Data Budget','Power Budget','Link Budget','Mass Budget','Cost Budget','Dashboard'];
+  const CURRENT = 4;
+  const stepEl = document.getElementById('stepper');
+  STEPS.forEach((s, i) => {
+    const num = i+1, active = num===CURRENT, done = num<CURRENT;
+    const cls = active?'step-active':done?'step-done':'step-future';
+    const lCls = done?'step-line-done':'step-line-future';
+    stepEl.innerHTML += `
+      <div class="flex flex-col items-center ${num>8?'opacity-40':''}">
+        <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${cls}">${num}</div>
+
+        <span class="text-xs mt-1 hidden md:block" style="color:${active?'#c4a0e8':done?'rgba(215,210,203,0.55)':'rgba(215,210,203,0.2)'};">${s}</span>
+      </div>
+      ${i<STEPS.length-1?`<div class="flex-1 h-0.5 mx-1 mt-3.5 ${lCls}"></div>`:''}`;
+  });
+
+  // ── Colors ─────────────────────────────────────────────────────────────────
+  const SC = {
+    ADCS:{bg:'rgba(59,130,246,0.2)',color:'#93c5fd'},
+    CDHS:{bg:'rgba(16,185,129,0.2)',color:'#6ee7b7'},
+    EPS:{bg:'rgba(245,158,11,0.2)',color:'#fcd34d'},
+    COMMS:{bg:'rgba(239,68,68,0.2)',color:'#fca5a5'},
+    Payload:{bg:'rgba(139,92,246,0.2)',color:'#c4b5fd'},
+    Structure:{bg:'rgba(156,163,175,0.2)',color:'#d1d5db'},
+    Thermal:{bg:'rgba(236,72,153,0.2)',color:'#f9a8d4'},
+  };
+  const PALETTE = ['#653f84','#9b6fc4','#3b82f6','#16a34a','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+
+  // ── App state ──────────────────────────────────────────────────────────────
+  let mission = null;
+  let rows = [];    // DataBudgetRowOut[]
+  let summary = null;
+  let chartDonut=null, chartBar=null, chartPie=null;
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  async function init() {
+    const [mRes, rowRes] = await Promise.all([
+      fetch(`${API}/missions/${missionId}`, {headers:{Authorization:`Bearer ${token}`}}),
+      fetch(`${API}/missions/${missionId}/data-budget`, {headers:{Authorization:`Bearer ${token}`}}),
+    ]);
+    if (!mRes.ok) { alert('Could not load mission'); return; }
+    mission = await mRes.json();
+    rows = await rowRes.json();
+    document.getElementById('mission-badge').textContent = mission.mission_name;
+    renderMissionBar();
+    renderTable();
+    recalcAll();
+  }
+  init();
+
+  // ── Mission bar ────────────────────────────────────────────────────────────
+  function renderMissionBar() {
+    const activeRows = rows.filter(r => r.measurements_per_minute > 0 || r.data_size_per_measurement_kb > 0).length;
+    const items = [
+      {label:'Mission', value:mission.mission_name},
+      {label:'Orbit Type', value:mission.orbit_type},
+      {label:'Orbit Duration', value:`${mission.orbit_duration_min} min`},
+      {label:'Orbits / Day', value:mission.orbits_per_day},
+      {label:'Total Components', value:rows.length},
+      {label:'Data-Active', value:`${activeRows} components`},
+    ];
+    document.getElementById('sec-mission').innerHTML = items.map(it=>`
+      <div>
+        <p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">${it.label}</p>
+        <p class="text-sm font-bold text-white mt-0.5">${it.value}</p>
+      </div>`).join('');
+  }
+
+  // ── Table ──────────────────────────────────────────────────────────────────
+  function renderTable() {
+    const tbody = document.getElementById('budget-tbody');
+    tbody.innerHTML = rows.map((r, idx) => {
+      const sc = SC[r.subsystem]||{bg:'rgba(101,63,132,0.3)',color:'#c4a0e8'};
+      const hasData = r.data_size_per_measurement_kb > 0 || r.measurements_per_minute > 0;
+      const missingRequired = hasData && (!r.data_type || !r.priority || !r.storage_mode);
+      const zeroActive = r.active_time_per_orbit_min === 0;
+      return `<tr class="${missingRequired?'row-warn':''}" id="row-${idx}">
+        <td style="min-width:200px;">
+          <div class="flex items-center gap-2">
+            <img src="${r.image_url||'https://placehold.co/36x36/241134/653f84?text=?'}"
+                 onerror="this.src='https://placehold.co/36x36/241134/653f84?text=?'"
+                 class="w-8 h-8 rounded-lg object-cover shrink-0" />
+            <div>
+              <p class="text-xs font-semibold text-white leading-tight">${r.component_name}</p>
+              <span class="subsystem-badge mt-0.5 inline-block" style="background:${sc.bg};color:${sc.color};">${r.subsystem}</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <select class="cell-select" id="dt-${idx}" onchange="onRowChange(${idx})">
+            <option value="" ${!r.data_type?'selected':''}>-- Select --</option>
+            ${['Telemetry','Image','Science Data','Video','Housekeeping','GPS/Nav'].map(t=>`<option value="${t}" ${r.data_type===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </td>
+        <td><input type="number" class="cell-input" id="sz-${idx}" value="${r.data_size_per_measurement_kb}" min="0" step="0.001" style="width:5.5rem;" oninput="onRowChange(${idx})" /></td>
+        <td><input type="number" class="cell-input" id="mm-${idx}" value="${r.measurements_per_minute}" min="0" step="0.01" style="width:5rem;" oninput="onRowChange(${idx})" /></td>
+        <td><div class="ro-cell ${zeroActive?'text-yellow-400/60':''}">${r.active_time_per_orbit_min.toFixed(2)}</div></td>
+        <td><div class="calc-cell" id="dpo-${idx}">${r.data_per_orbit_kb.toFixed(3)}</div></td>
+        <td><div class="ro-cell">${r.orbits_per_day}</div></td>
+        <td><div class="calc-cell" id="dpd-${idx}">${r.data_per_day_kb.toFixed(3)}</div></td>
+        <td>
+          <select class="cell-select" id="pr-${idx}" onchange="onRowChange(${idx})">
+            ${['Critical','High','Medium','Low'].map(p=>`<option ${r.priority===p?'selected':''}>${p}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <select class="cell-select" id="sm-${idx}" onchange="onRowChange(${idx})">
+            ${['Stored','Sent','Both'].map(m=>`<option ${r.storage_mode===m?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Row change ─────────────────────────────────────────────────────────────
+  function onRowChange(idx) {
+    const r = rows[idx];
+    r.data_type = document.getElementById(`dt-${idx}`).value.trim()||null;
+    r.data_size_per_measurement_kb = parseFloat(document.getElementById(`sz-${idx}`).value)||0;
+    r.measurements_per_minute = parseFloat(document.getElementById(`mm-${idx}`).value)||0;
+    r.priority = document.getElementById(`pr-${idx}`).value;
+    r.storage_mode = document.getElementById(`sm-${idx}`).value;
+
+    const dpo = r.data_size_per_measurement_kb * r.measurements_per_minute * r.active_time_per_orbit_min;
+    const dpd = dpo * r.orbits_per_day;
+    r.data_per_orbit_kb = dpo;
+    r.data_per_day_kb = dpd;
+
+    document.getElementById(`dpo-${idx}`).textContent = dpo.toFixed(3);
+    document.getElementById(`dpd-${idx}`).textContent = dpd.toFixed(3);
+
+    const hasData = r.data_size_per_measurement_kb > 0 || r.measurements_per_minute > 0;
+    const missing = hasData && (!r.data_type||!r.priority||!r.storage_mode);
+    document.getElementById(`row-${idx}`)?.classList.toggle('row-warn', missing);
+
+    recalcAll();
+  }
+
+  // ── Recalc totals ──────────────────────────────────────────────────────────
+  function fmtKB(kb) {
+    if (kb >= 1_048_576) return `${(kb/1_048_576).toFixed(2)} GB`;
+    if (kb >= 1024) return `${(kb/1024).toFixed(2)} MB`;
+    return `${kb.toFixed(2)} KB`;
+  }
+
+  function recalcAll() {
+    let totalOrbit=0, totalDay=0, totalStored=0, totalSent=0;
+    const subsysTotals={};
+    rows.forEach(r => {
+      totalOrbit += r.data_per_orbit_kb;
+      totalDay += r.data_per_day_kb;
+      const sm = r.storage_mode;
+      if (sm==='Stored') totalStored += r.data_per_day_kb;
+      else if (sm==='Sent') totalSent += r.data_per_day_kb;
+      else { totalStored += r.data_per_day_kb; totalSent += r.data_per_day_kb; }
+      subsysTotals[r.subsystem] = (subsysTotals[r.subsystem]||0) + r.data_per_day_kb;
+    });
+
+    // Assume 1 GB capacity defaults if summary not loaded yet
+    const maxKB = 1_048_576;
+    const marginKB = 104_857.6;
+    const remaining = maxKB - totalStored;
+    const capacityOk = totalStored <= maxKB;
+    const marginOk = remaining >= marginKB;
+    const valid = capacityOk && marginOk;
+
+    renderStorageCards(totalStored, maxKB, marginKB, remaining, capacityOk, marginOk);
+    renderSummaryCards(totalOrbit, totalDay, totalStored, totalSent, remaining, valid);
+    renderSubsysBars(subsysTotals);
+    updateCharts(subsysTotals, rows, totalStored, totalSent);
+    renderAlertBanner(capacityOk, marginOk, totalStored, maxKB, remaining, marginKB);
+    document.getElementById('btn-next').disabled = !valid;
+  }
+
+  // ── Storage cards ──────────────────────────────────────────────────────────
+  function renderStorageCards(used, max, margin, remaining, capOk, marOk) {
+    const status = !capOk ? 'bad' : !marOk ? 'warn' : 'ok';
+    const statusText = !capOk ? '❌ Exceeded' : !marOk ? '⚠️ Low Margin' : '✓ OK';
+    document.getElementById('storage-cards').innerHTML = `
+      <div class="card px-4 py-4">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Max Storage</p>
+        <p class="text-xl font-bold text-white mt-1">${fmtKB(max)}</p>
+      </div>
+      <div class="card px-4 py-4">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Required Margin</p>
+        <p class="text-xl font-bold text-white mt-1">${fmtKB(margin)}</p>
+      </div>
+      <div class="card px-4 py-4">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Stored / Day</p>
+        <p class="text-xl font-bold mt-1" style="color:#c4a0e8;">${fmtKB(used)}</p>
+        <div class="mt-2 w-full rounded-full h-1.5" style="background:rgba(215,210,203,0.08);">
+          <div class="h-1.5 rounded-full" style="width:${Math.min(used/max*100,100).toFixed(1)}%;background:${!capOk?'#ef4444':!marOk?'#f59e0b':'#16a34a'};"></div>
+        </div>
+      </div>
+      <div class="card px-4 py-4 flex flex-col justify-between">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Remaining</p>
+        <p class="text-xl font-bold mt-1 text-white">${fmtKB(remaining)}</p>
+        <span class="text-xs font-bold px-2 py-1 rounded-full mt-2 inline-block status-${status}">${statusText}</span>
+      </div>`;
+  }
+
+  // ── Summary cards ──────────────────────────────────────────────────────────
+  function renderSummaryCards(orbit, day, stored, sent, remaining, valid) {
+    document.getElementById('summary-cards').innerHTML = `
+      <div class="card px-4 py-3 flex justify-between items-center">
+        <div><p class="text-xs" style="color:rgba(215,210,203,0.4);">Total / Orbit</p><p class="text-lg font-bold text-white">${fmtKB(orbit)}</p></div>
+      </div>
+      <div class="card px-4 py-3">
+        <p class="text-xs" style="color:rgba(215,210,203,0.4);">Total / Day</p>
+        <p class="text-lg font-bold text-white">${fmtKB(day)}</p>
+      </div>
+      <div class="card px-4 py-3 grid grid-cols-2 gap-2">
+        <div>
+          <p class="text-xs" style="color:rgba(215,210,203,0.4);">Stored/Day</p>
+          <p class="text-sm font-bold" style="color:#6ee7b7;">${fmtKB(stored)}</p>
+        </div>
+        <div>
+          <p class="text-xs" style="color:rgba(215,210,203,0.4);">Sent/Day</p>
+          <p class="text-sm font-bold" style="color:#93c5fd;">${fmtKB(sent)}</p>
+        </div>
+      </div>
+      <div class="card px-4 py-3 flex justify-between items-center">
+        <div><p class="text-xs" style="color:rgba(215,210,203,0.4);">Status</p></div>
+        <span class="text-xs font-bold px-2 py-1 rounded-full status-${valid?'ok':'bad'}">${valid?'✓ Valid':'❌ Invalid'}</span>
+      </div>`;
+  }
+
+  // ── Subsystem bars ─────────────────────────────────────────────────────────
+  function renderSubsysBars(totals) {
+    const max = Math.max(...Object.values(totals), 0.001);
+    document.getElementById('subsys-bars').innerHTML = Object.entries(totals)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([sub,val])=>{
+        const sc = SC[sub]||{bg:'rgba(101,63,132,0.3)',color:'#c4a0e8'};
+        return `<div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="subsystem-badge" style="background:${sc.bg};color:${sc.color};">${sub}</span>
+            <span class="font-bold text-white">${fmtKB(val)}</span>
+          </div>
+          <div class="w-full rounded-full h-1.5" style="background:rgba(215,210,203,0.07);">
+            <div class="h-1.5 rounded-full" style="width:${(val/max*100).toFixed(1)}%;background:${sc.color};"></div>
+          </div>
+        </div>`;
+      }).join('');
+  }
+
+  // ── Alert banner ───────────────────────────────────────────────────────────
+  function renderAlertBanner(capOk, marOk, used, max, rem, margin) {
+    const el = document.getElementById('alert-banner');
+    if (capOk && marOk) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    if (!capOk) {
+      el.className = 'rounded-xl px-4 py-3 text-sm font-medium status-bad';
+      el.textContent = `❌ Storage capacity exceeded: ${fmtKB(used)} stored of ${fmtKB(max)} max. Reduce storage allocation.`;
+    } else {
+      el.className = 'rounded-xl px-4 py-3 text-sm font-medium status-warn';
+      el.textContent = `⚠️ Storage margin below required threshold: ${fmtKB(rem)} remaining, ${fmtKB(margin)} required.`;
+    }
+  }
+
+  // ── Charts ─────────────────────────────────────────────────────────────────
+  function updateCharts(subsysTotals, rowList, stored, sent) {
+    // Doughnut – subsystem
+    if (chartDonut) chartDonut.destroy();
+    const dCtx = document.getElementById('chart-donut').getContext('2d');
+    const subLabels = Object.keys(subsysTotals);
+    chartDonut = new Chart(dCtx, {
+      type:'doughnut',
+      data:{ labels:subLabels, datasets:[{ data:Object.values(subsysTotals), backgroundColor:subLabels.map(s=>SC[s]?.color||'#c4a0e8'), borderWidth:0 }] },
+      options:{ responsive:true, cutout:'65%', plugins:{ legend:{ labels:{ color:'rgba(215,210,203,0.6)', font:{size:10}, boxWidth:10 } } } }
+    });
+
+    // Bar – top components
+    if (chartBar) chartBar.destroy();
+    const bCtx = document.getElementById('chart-bar').getContext('2d');
+    const sorted = [...rowList].sort((a,b)=>b.data_per_day_kb-a.data_per_day_kb).slice(0,6);
+    chartBar = new Chart(bCtx, {
+      type:'bar',
+      data:{ labels:sorted.map(r=>r.component_name.split(' ').slice(0,2).join(' ')),
+             datasets:[{ data:sorted.map(r=>r.data_per_day_kb), backgroundColor:sorted.map(r=>SC[r.subsystem]?.color||'#c4a0e8'), borderRadius:6, borderWidth:0 }] },
+      options:{ responsive:true, plugins:{ legend:{display:false} },
+        scales:{ x:{ ticks:{color:'rgba(215,210,203,0.5)',font:{size:9}}, grid:{display:false} },
+                 y:{ ticks:{color:'rgba(215,210,203,0.5)',font:{size:9}}, grid:{color:'rgba(215,210,203,0.05)'},
+                     title:{display:true,text:'KB/day',color:'rgba(215,210,203,0.3)',font:{size:9}} } } }
+    });
+
+    // Pie – stored vs sent
+    if (chartPie) chartPie.destroy();
+    const pCtx = document.getElementById('chart-pie').getContext('2d');
+    chartPie = new Chart(pCtx, {
+      type:'doughnut',
+      data:{ labels:['Stored','Sent'], datasets:[{ data:[stored,sent], backgroundColor:['#6ee7b7','#93c5fd'], borderWidth:0 }] },
+      options:{ responsive:true, cutout:'55%', plugins:{ legend:{ labels:{ color:'rgba(215,210,203,0.6)', font:{size:11}, boxWidth:12 } } } }
+    });
+  }
+
+  // ── Save ───────────────────────────────────────────────────────────────────
+  async function saveBudget() {
+    const btn = document.getElementById('btn-save');
+    btn.textContent = 'Saving…'; btn.disabled = true;
+
+    const entries = rows.map(r => ({
+      mission_component_id: r.mission_component_id,
+      data_type: r.data_type || null,
+      data_size_per_measurement_kb: r.data_size_per_measurement_kb,
+      measurements_per_minute: r.measurements_per_minute,
+      priority: r.priority,
+      storage_mode: r.storage_mode,
+      notes: null,
+    }));
+
+    try {
+      const res = await fetch(`${API}/missions/${missionId}/data-budget/save`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+        body: JSON.stringify({ entries })
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Save failed');
+      btn.textContent = '✓ Saved!';
+      btn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+      setTimeout(()=>{ btn.textContent='💾 Save Data Budget'; btn.style.background=''; btn.disabled=false; }, 2000);
+    } catch(err) {
+      alert(err.message);
+      btn.textContent = '💾 Save Data Budget'; btn.disabled = false;
+    }
+  }
+
+  function goNext() {
+    saveBudget().then(()=> setTimeout(()=>{ window.location.href = '/power-budget'; }, 600));
+  }
+  function logout() { localStorage.clear(); window.location.href = '/'; }
+</script>
+</body>
+</html>
