@@ -91,6 +91,61 @@
           <h2 class="text-sm font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">Data Budget Table</h2>
           <span class="text-xs" style="color:rgba(215,210,203,0.3);">Yellow rows have missing required fields</span>
         </div>
+
+        <!-- Data Types Guide (Collapsible) -->
+        <details class="mb-5 border rounded-xl overflow-hidden" style="border-color:rgba(101,63,132,0.3);">
+          <summary class="card p-4 cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between">
+            <h3 class="text-[10px] font-bold uppercase tracking-widest" style="color:#c4a0e8;">📚 Data Types Guide (Click to expand)</h3>
+            <span class="text-[10px] opacity-40">▼</span>
+          </summary>
+          <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6" style="background:rgba(101,63,132,0.05);">
+            <!-- Original List -->
+            <div class="space-y-4">
+              <div class="text-[11px] leading-relaxed">
+                <strong class="text-white block mb-0.5">Telemetry:</strong>
+                <span style="color:rgba(215,210,203,0.6);">Real-time health and status data from subsystems (e.g., temperatures, currents).</span>
+              </div>
+              <div class="text-[11px] leading-relaxed">
+                <strong class="text-white block mb-0.5">Image:</strong>
+                <span style="color:rgba(215,210,203,0.6);">Visual data captured by cameras or sensors (e.g., Earth observation).</span>
+              </div>
+              <div class="text-[11px] leading-relaxed">
+                <strong class="text-white block mb-0.5">Science Data:</strong>
+                <span style="color:rgba(215,210,203,0.6);">Raw measurements from mission-specific sensors or instruments.</span>
+              </div>
+              <div class="text-[11px] leading-relaxed">
+                <strong class="text-white block mb-0.5">Video:</strong>
+                <span style="color:rgba(215,210,203,0.6);">High-bandwidth visual streams for observation or recording.</span>
+              </div>
+            </div>
+
+            <!-- Extended List -->
+            <div class="space-y-4">
+              <div class="text-[11px] leading-relaxed">
+                <strong class="text-white block mb-0.5">Housekeeping:</strong>
+                <span style="color:rgba(215,210,203,0.6);">Background data tracking the satellite's long-term health and history.</span>
+              </div>
+              <div class="text-[11px] leading-relaxed">
+                <strong class="text-white block mb-0.5">GPS/Nav:</strong>
+                <span style="color:rgba(215,210,203,0.6);">Positional data, velocity, and time synchronization from global navigation systems.</span>
+              </div>
+              <div class="text-[11px] leading-relaxed">
+                <strong class="text-white block mb-0.5">Telemetry and Commands:</strong>
+                <span style="color:rgba(215,210,203,0.6);">Bidirectional signals for the CDHS to report status and receive operational directives.</span>
+              </div>
+              <div class="text-[11px] leading-relaxed">
+                <strong class="text-white block mb-0.5">TT&C:</strong>
+                <span style="color:rgba(215,210,203,0.6);">Telemetry, Tracking, and Command. Critical digital signals linking the satellite with ground control (health, ranging, and uplink commands).</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Bold clarification note -->
+        <p class="mb-3 text-[11px] uppercase tracking-wider font-extrabold" style="color:#c4a0e8;">
+          ⚠️ NOTE: Meas/Min stands for Measurement/min (How many data points are collected every minute)
+        </p>
+
         <div class="card overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full" style="border-collapse:collapse;min-width:1100px;">
@@ -158,6 +213,23 @@
   const missionId = localStorage.getItem('sp_mission_id');
   if (!token) window.location.href = '/';
   if (!missionId) window.location.href = '/mission';
+
+  // ── Page Access Guard ────────────────────────────────────────────────────────
+  (async () => {
+    const r = await fetch(`${API}/page-access/check/data-budget`);
+    const d = await r.json();
+    if (!d.is_unlocked) {
+      document.body.innerHTML = `
+        <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#1a0c27;font-family:Inter,sans-serif;">
+          <div style="text-align:center;padding:3rem;">
+            <div style="font-size:4rem;margin-bottom:1rem;">🔒</div>
+            <h1 style="color:#fff;font-size:1.5rem;font-weight:800;margin-bottom:0.5rem;">Page Locked</h1>
+            <p style="color:rgba(215,210,203,0.5);font-size:0.9rem;margin-bottom:2rem;">The <strong style="color:#c4a0e8;">Data Budget</strong> phase has not been unlocked yet.<br/>Please wait for your instructor to unlock this phase.</p>
+            <button onclick="window.location.href='/conops'" style="background:linear-gradient(135deg,#653f84,#241134);color:#fff;border:none;border-radius:0.75rem;padding:0.75rem 1.75rem;font-size:0.85rem;font-weight:600;cursor:pointer;">← Back to CONOPS</button>
+          </div>
+        </div>`;
+    }
+  })();
 
   // ── Stepper ────────────────────────────────────────────────────────────────
   const STEPS = ['Create Mission','Components','CONOPS','Data Budget','Power Budget','Link Budget','Mass Budget','Cost Budget','Dashboard'];
@@ -251,7 +323,10 @@
         <td>
           <select class="cell-select" id="dt-${idx}" onchange="onRowChange(${idx})">
             <option value="" ${!r.data_type?'selected':''}>-- Select --</option>
-            ${['Telemetry','Image','Science Data','Video','Housekeeping','GPS/Nav'].map(t=>`<option value="${t}" ${r.data_type===t?'selected':''}>${t}</option>`).join('')}
+            ${[
+              'Telemetry','Image','Science Data','Video','Housekeeping','GPS/Nav',
+              'Telemetry and Commands','TT&C'
+            ].map(t=>`<option value="${t}" ${r.data_type===t?'selected':''}>${t}</option>`).join('')}
           </select>
         </td>
         <td><input type="number" class="cell-input" id="sz-${idx}" value="${r.data_size_per_measurement_kb}" min="0" step="0.001" style="width:5.5rem;" oninput="onRowChange(${idx})" /></td>

@@ -4,8 +4,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 from app.database import Base, engine
+from app.models.invitation_code import InvitationCode
+from app.models.page_access import PageAccess
 import app.models  # ensure all models are registered before create_all
-from app.routes import auth, missions, components, mission_components, conops, data_budget, power_budget, link_budget, mass_budget, cost_budget, dashboard, invitation_codes
+from app.routes import auth, missions, components, mission_components, conops, data_budget, power_budget, link_budget, mass_budget, cost_budget, dashboard, invitation_codes, page_access
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
@@ -37,6 +39,7 @@ app.include_router(mass_budget.router, prefix="/api")
 app.include_router(cost_budget.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(invitation_codes.router, prefix="/api")
+app.include_router(page_access.router, prefix="/api")
 
 # ── Frontend Routes ──────────────────────────────────────────────────────────
 

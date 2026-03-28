@@ -60,6 +60,7 @@
       <button id="tab-components" onclick="switchAdminTab('components')" class="py-4 text-sm font-semibold border-b-2 text-white border-secondary transition-colors">Components</button>
       <button id="tab-codes" onclick="switchAdminTab('codes')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">Invitation Codes</button>
       <button id="tab-students" onclick="switchAdminTab('students')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">Registered Students</button>
+      <button id="tab-pages" onclick="switchAdminTab('pages')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">🔐 Page Access</button>
     </div>
   </div>
 
@@ -209,6 +210,25 @@
     </div>
   </div>
 
+  <!-- PAGE ACCESS VIEW -->
+  <div id="view-pages" class="admin-view hidden">
+    <div class="px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+      <div class="max-w-7xl mx-auto">
+        <h1 class="text-xl font-bold text-white">Page Access Control</h1>
+        <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Control which mission phases students can access. Mission, Components, and CONOPS are always open.</p>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-8 py-8 pb-12">
+      <!-- Always open notice -->
+      <div class="rounded-xl px-4 py-3 mb-6 text-sm" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:#6ee7b7;">
+        ✅ <strong>Always Unlocked:</strong> Mission Creation, Component Selection, CONOPS — students can always access these.
+      </div>
+      <!-- Lockable pages grid -->
+      <div id="pages-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+  </div>
+
   <!-- Code Modal Overlay -->
   <div class="overlay" id="code-modal" onclick="closeCodeModal(event)">
     <div class="modal" onclick="event.stopPropagation()" style="max-width:500px;">
@@ -350,27 +370,29 @@
 
     // ── Tab Management ────────────────────────────────────────────────────────
     let currentTab = 'components';
+    const ALL_TABS = ['components', 'codes', 'students', 'pages'];
     function switchAdminTab(tab) {
-      document.getElementById('view-components').classList.toggle('hidden', tab !== 'components');
-      document.getElementById('view-components').classList.toggle('block', tab === 'components');
-      document.getElementById('view-codes').classList.toggle('hidden', tab !== 'codes');
-      document.getElementById('view-codes').classList.toggle('block', tab === 'codes');
-      document.getElementById('view-students').classList.toggle('hidden', tab !== 'students');
-      document.getElementById('view-students').classList.toggle('block', tab === 'students');
-
-      ['components', 'codes', 'students'].forEach(t => {
-        const el = document.getElementById('tab-' + t);
-        if (t === tab) {
-          el.classList.add('border-secondary', 'text-white');
-          el.classList.remove('border-transparent', 'text-gray-400');
-        } else {
-          el.classList.remove('border-secondary', 'text-white');
-          el.classList.add('border-transparent', 'text-gray-400');
+      ALL_TABS.forEach(t => {
+        const view = document.getElementById('view-' + t);
+        if (view) {
+          view.classList.toggle('hidden', t !== tab);
+          view.classList.toggle('block', t === tab);
+        }
+        const btn = document.getElementById('tab-' + t);
+        if (btn) {
+          if (t === tab) {
+            btn.classList.add('border-secondary', 'text-white');
+            btn.classList.remove('border-transparent', 'text-gray-400');
+          } else {
+            btn.classList.remove('border-secondary', 'text-white');
+            btn.classList.add('border-transparent', 'text-gray-400');
+          }
         }
       });
       currentTab = tab;
       if (tab === 'codes') loadCodes();
       if (tab === 'students') loadStudents();
+      if (tab === 'pages') loadPageAccess();
     }
 
     // ── Invitation Codes ──────────────────────────────────────────────────────
@@ -510,6 +532,64 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Students");
       XLSX.writeFile(wb, "SpacePoint_Students.xlsx");
+    }
+
+    // ── Page Access ───────────────────────────────────────────────────────────
+    const PAGE_ICONS = {
+      'data-budget': '📡', 'power-budget': '⚡', 'link-budget': '📶',
+      'mass-budget': '⚖️', 'cost-budget': '💰', 'dashboard': '🛰️'
+    };
+    let allPages = [];
+
+    async function loadPageAccess() {
+      const res = await fetch(`${API}/page-access`, { headers: { Authorization:`Bearer ${token}` } });
+      allPages = await res.json();
+      renderPages();
+    }
+
+    function renderPages() {
+      const grid = document.getElementById('pages-grid');
+      if (!allPages.length) { grid.innerHTML = '<p class="text-sm" style="color:rgba(215,210,203,0.3);">No lockable pages found.</p>'; return; }
+      grid.innerHTML = allPages.map(p => {
+        const icon = PAGE_ICONS[p.page_key] || '📄';
+        const unlocked = p.is_unlocked;
+        return `
+        <div class="rounded-2xl p-5 flex flex-col gap-4 transition-all" style="background:rgba(255,255,255,0.04);border:1.5px solid ${unlocked ? 'rgba(16,185,129,0.3)' : 'rgba(215,210,203,0.09)'};">
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-3">
+              <div class="text-2xl">${icon}</div>
+              <div>
+                <p class="font-bold text-white text-sm">${p.label}</p>
+                <p class="text-xs mt-0.5" style="color:rgba(215,210,203,0.4);">/${p.page_key}</p>
+              </div>
+            </div>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full" style="background:${unlocked ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.15)'};color:${unlocked ? '#6ee7b7' : '#fca5a5'};">
+              ${unlocked ? '🔓 Open' : '🔒 Locked'}
+            </span>
+          </div>
+          <p class="text-xs" style="color:rgba(215,210,203,0.5);">
+            ${unlocked ? 'Students can currently access this page.' : 'Students see a locked screen when they try to visit this page.'}
+          </p>
+          <button onclick="togglePage('${p.page_key}', ${!unlocked})"
+            class="w-full py-2 rounded-xl text-xs font-bold transition-all"
+            style="background:${unlocked ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'};border:1px solid ${unlocked ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'};color:${unlocked ? '#fca5a5' : '#6ee7b7'};">
+            ${unlocked ? '🔒 Lock this page' : '🔓 Unlock this page'}
+          </button>
+        </div>`;
+      }).join('');
+    }
+
+    async function togglePage(pageKey, newState) {
+      try {
+        const res = await fetch(`${API}/page-access/${pageKey}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ is_unlocked: newState })
+        });
+        if (!res.ok) throw new Error('Failed to update');
+        await loadPageAccess();
+        showMsg(`${pageKey} is now ${newState ? 'unlocked' : 'locked'}.`, false);
+      } catch (e) { showMsg(e.message); }
     }
 
     let allComponents = [];
