@@ -188,23 +188,37 @@ def _calc_mass(mission: Mission, mc_list, constraint: MissionConstraint, db: Ses
         entry = db.query(MassBudgetEntry).filter(MassBudgetEntry.mission_component_id == mc.id).first()
         if entry:
             has_data = True
-        qty = mc.quantity
-        mass = (entry.mass_per_unit_g if entry and entry.mass_per_unit_g else None) or (mc.component.scaled_mass_g or 0.0)
-        total_mass_g += mass * qty
+            
+        qty = entry.quantity if entry and entry.quantity is not None else (mc.quantity or 1)
+        
+        mass_val = entry.mass_per_unit_g if entry and entry.mass_per_unit_g is not None else mc.component.scaled_mass_g
+        mass_val = mass_val if mass_val is not None else 0.0
+        total_mass_g += mass_val * qty
+        
         # Volume
-        if entry and entry.length_x_mm and entry.width_y_mm and entry.height_z_mm:
-            vol = entry.length_x_mm * entry.width_y_mm * entry.height_z_mm
-        else:
+        lx = entry.length_x_mm if entry and entry.length_x_mm is not None else None
+        wy = entry.width_y_mm if entry and entry.width_y_mm is not None else None
+        hz = entry.height_z_mm if entry and entry.height_z_mm is not None else None
+        
+        if lx is None or wy is None or hz is None:
             try:
                 raw = (mc.component.scaled_dimensions_mm or "").replace("x", "X")
                 parts = [float(p.strip()) for p in raw.split("X")]
-                vol = parts[0] * parts[1] * parts[2] if len(parts) >= 3 else 0
+                lib_l = float(parts[0]) if len(parts) >= 3 else 0.0
+                lib_w = float(parts[1]) if len(parts) >= 3 else 0.0
+                lib_h = float(parts[2]) if len(parts) >= 3 else 0.0
             except Exception:
-                vol = 0
+                lib_l, lib_w, lib_h = 0.0, 0.0, 0.0
+            lx = lx if lx is not None else lib_l
+            wy = wy if wy is not None else lib_w
+            hz = hz if hz is not None else lib_h
+            
+        vol = (lx or 0.0) * (wy or 0.0) * (hz or 0.0)
         total_vol_mm3 += vol * qty
-        subsys_mass[mc.component.subsystem] += mass * qty / 1000  # kg
-        if mass > 0:
-            top.append({"name": mc.component.component_name, "sub": mc.component.subsystem, "val": mass * qty / 1000})
+        
+        subsys_mass[mc.component.subsystem] += mass_val * qty / 1000  # kg
+        if mass_val > 0:
+            top.append({"name": mc.component.component_name, "sub": mc.component.subsystem, "val": mass_val * qty / 1000})
 
     total_mass_kg = total_mass_g / 1000
     total_vol_cm3 = total_vol_mm3 / 1000
