@@ -11,6 +11,7 @@ class Component(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     component_name = Column(String, nullable=False)
     subsystem = Column(String, nullable=False)        # ADCS, CDHS, EPS, COMMS, Payload, Structure, Thermal
+    tag = Column(String, nullable=True)               # e.g., TinkerCAD, Physical
     example_role = Column(Text)
     scaled_description = Column(Text)
     scaled_dimensions_mm = Column(String)

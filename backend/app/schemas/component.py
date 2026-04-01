@@ -6,6 +6,7 @@ import uuid
 class ComponentCreate(BaseModel):
     component_name: str
     subsystem: str
+    tag: Optional[str] = None
     example_role: Optional[str] = None
     scaled_description: Optional[str] = None
     scaled_dimensions_mm: Optional[str] = None
@@ -24,6 +25,7 @@ class ComponentCreate(BaseModel):
 class ComponentUpdate(BaseModel):
     component_name: Optional[str] = None
     subsystem: Optional[str] = None
+    tag: Optional[str] = None
     example_role: Optional[str] = None
     scaled_description: Optional[str] = None
     scaled_dimensions_mm: Optional[str] = None
@@ -43,6 +45,7 @@ class ComponentOut(BaseModel):
     id: uuid.UUID
     component_name: str
     subsystem: str
+    tag: Optional[str] = None
     example_role: Optional[str]
     scaled_description: Optional[str]
     scaled_dimensions_mm: Optional[str]

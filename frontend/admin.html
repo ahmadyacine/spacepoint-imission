@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SpacePoint – Admin Panel</title>
+  <link rel="icon" type="image/png" href="/static/logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <script>
@@ -29,13 +30,16 @@
     .btn-edit { background:rgba(101,63,132,0.2); border:1px solid rgba(101,63,132,0.3); color:#c4a0e8; border-radius:0.5rem; padding:0.35rem 0.7rem; font-size:0.72rem; font-weight:600; cursor:pointer; transition:background 0.2s; }
     .btn-edit:hover { background:rgba(101,63,132,0.35); }
     .overlay { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
-    .overlay.open { display:flex; align-items:center; justify-content:center; }
-    .modal { background:#1e1030; border:1.5px solid rgba(101,63,132,0.3); border-radius:1.25rem; padding:2rem; width:100%; max-width:680px; max-height:90vh; overflow-y:auto; }
+    .overlay.open { display:flex; align-items:center; justify-content:center; padding:1rem; }
+    .modal { background:#1e1030; border:1.5px solid rgba(101,63,132,0.3); border-radius:1.25rem; padding:1.25rem; width:100%; max-width:680px; max-height:90vh; overflow-y:auto; }
+    @media(min-width: 640px) { .modal { padding:2rem; } }
     .subsystem-badge { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:0.18rem 0.55rem; border-radius:9999px; }
-    th { text-align:left; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:rgba(215,210,203,0.4); padding:0.75rem 1rem; }
-    td { padding:0.7rem 1rem; font-size:0.8rem; border-top:1px solid rgba(215,210,203,0.06); vertical-align:middle; }
+    th { text-align:left; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:rgba(215,210,203,0.4); padding:0.75rem 1rem; white-space:nowrap; }
+    td { padding:0.7rem 1rem; font-size:0.8rem; border-top:1px solid rgba(215,210,203,0.06); vertical-align:middle; white-space:nowrap; }
     tr:hover td { background:rgba(255,255,255,0.02); }
     ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:rgba(101,63,132,0.5); border-radius:9999px; }
+    .hide-scroll::-webkit-scrollbar { display: none; }
+    .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
   <!-- SheetJS for Excel Export -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -43,47 +47,52 @@
 <body class="min-h-screen">
 
   <!-- Nav -->
-  <nav class="border-b px-6 py-4 flex items-center justify-between" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
-    <div class="flex items-center gap-3">
-      <img src="/static/logo.png" alt="SpacePoint" class="h-9 w-auto object-contain" style="filter:brightness(1.05);"/>
-      <span class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(245,158,11,0.2);color:#fcd34d;font-weight:700;">ADMIN</span>
+  <nav class="border-b px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2" style="border-color:rgba(215,210,203,0.1);background:rgba(36,17,52,0.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;">
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+      <img src="/static/logo.png" alt="SpacePoint" class="h-6 sm:h-9 w-auto object-contain shrink-0" style="filter:brightness(1.05);"/>
+      <span class="hidden sm:inline-block text-[10px] sm:text-xs px-2 py-0.5 rounded-full ml-1 shrink-0" style="background:rgba(245,158,11,0.2);color:#fcd34d;font-weight:700;">ADMIN</span>
     </div>
-    <div class="flex items-center gap-3">
-      <span id="admin-name" class="text-sm" style="color:rgba(215,210,203,0.5);">Loading…</span>
-      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border hover:bg-white/5 transition-colors" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+      <span id="admin-name" class="hidden sm:inline-block text-sm truncate max-w-[120px] md:max-w-[200px]" style="color:rgba(215,210,203,0.5);">Loading…</span>
+      <button onclick="logout()" class="flex items-center gap-2 text-xs px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border hover:bg-white/5 transition-colors whitespace-nowrap shrink-0" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);" title="Sign Out">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+        <span class="hidden sm:inline-block font-semibold">Sign Out</span>
+      </button>
     </div>
   </nav>
 
   <!-- Tabs -->
   <div class="border-b" style="border-color:rgba(215,210,203,0.08);background:rgba(30,16,48,0.5);">
-    <div class="max-w-7xl mx-auto px-8 flex gap-6">
-      <button id="tab-components" onclick="switchAdminTab('components')" class="py-4 text-sm font-semibold border-b-2 text-white border-secondary transition-colors">Components</button>
-      <button id="tab-codes" onclick="switchAdminTab('codes')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">Invitation Codes</button>
-      <button id="tab-students" onclick="switchAdminTab('students')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">Registered Students</button>
-      <button id="tab-pages" onclick="switchAdminTab('pages')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors">🔐 Page Access</button>
+    <div class="max-w-7xl mx-auto px-4 sm:px-8 flex overflow-x-auto gap-6 hide-scroll">
+      <button id="tab-components" onclick="switchAdminTab('components')" class="py-4 text-sm font-semibold border-b-2 text-white border-secondary transition-colors whitespace-nowrap">Components</button>
+      <button id="tab-codes" onclick="switchAdminTab('codes')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">Invitation Codes</button>
+      <button id="tab-students" onclick="switchAdminTab('students')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">Registered Students</button>
+      <button id="tab-pages" onclick="switchAdminTab('pages')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🔐 Page Access</button>
     </div>
   </div>
 
   <!-- VIEWS CONTAINER -->
   <div id="view-components" class="admin-view block">
     <!-- Page header -->
-    <div class="px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
-      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+    <div class="px-4 sm:px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center gap-4 justify-between">
         <div>
           <h1 class="text-xl font-bold text-white">Component Library</h1>
           <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Manage all satellite components visible to students.</p>
         </div>
-        <div class="flex items-center gap-3">
-          <div class="relative">
+        <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div class="relative w-full sm:w-auto flex-1">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style="color:rgba(215,210,203,0.4);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
-            <input id="search-comp" type="text" class="input-field" style="padding-left:2.2rem;width:220px;" placeholder="Search components…" oninput="filterCompTable()" />
+            <input id="search-comp" type="text" class="input-field w-full sm:w-[220px]" style="padding-left:2.2rem;" placeholder="Search components…" oninput="filterCompTable()" />
           </div>
-          <select id="filter-sub" class="input-field" style="width:140px;" onchange="filterCompTable()">
-            <option value="">All Subsystems</option>
-            <option>ADCS</option><option>CDHS</option><option>EPS</option>
-            <option>COMMS</option><option>Payload</option><option>Structure</option><option>Thermal</option>
-          </select>
-          <button onclick="openCompModal()" class="btn-primary whitespace-nowrap">+ Add Component</button>
+          <div class="flex gap-2 w-full sm:w-auto">
+            <select id="filter-sub" class="input-field flex-1 sm:w-[140px]" onchange="filterCompTable()">
+              <option value="">All Subsystems</option>
+              <option>ADCS</option><option>CDHS</option><option>EPS</option>
+              <option>COMMS</option><option>Payload</option><option>Structure</option><option>Thermal</option>
+            </select>
+            <button onclick="openCompModal()" class="btn-primary flex-1 sm:w-auto whitespace-nowrap">+ Add Component</button>
+          </div>
         </div>
       </div>
     </div>
@@ -94,7 +103,7 @@
   </div>
 
   <!-- Stats row -->
-  <div class="max-w-7xl mx-auto px-8 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+  <div class="max-w-7xl mx-auto px-4 sm:px-8 py-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
     <div class="rounded-xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
       <p class="text-xs" style="color:rgba(215,210,203,0.4);">Total Components</p>
       <p id="stat-total" class="text-2xl font-bold text-white mt-1">–</p>
@@ -114,14 +123,15 @@
   </div>
 
   <!-- Table -->
-  <div class="max-w-7xl mx-auto px-8 pb-12">
+  <div class="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
     <div class="rounded-2xl overflow-hidden" style="border:1.5px solid rgba(215,210,203,0.09);">
       <div class="overflow-x-auto">
-        <table class="w-full" style="border-collapse:collapse;">
+        <table class="w-full text-left" style="border-collapse:collapse; min-width:800px;">
           <thead style="background:rgba(36,17,52,0.8);">
             <tr>
               <th>Component</th>
               <th>Subsystem</th>
+              <th>Tag</th>
               <th>Power (V / mA)</th>
               <th>Mass (g)</th>
               <th>Cost (USD)</th>
@@ -142,21 +152,22 @@
 
   <!-- INVITATION CODES VIEW -->
   <div id="view-codes" class="admin-view hidden">
-    <div class="px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+    <div class="px-4 sm:px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
       <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
           <h1 class="text-xl font-bold text-white">Invitation Codes</h1>
           <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Generate codes required for student registration.</p>
         </div>
         <div class="flex items-center gap-3">
-          <button onclick="openCodeModal()" class="btn-primary whitespace-nowrap">+ Add Code</button>
+          <button onclick="openCodeModal()" class="btn-primary w-full sm:w-auto whitespace-nowrap">+ Add Code</button>
         </div>
       </div>
     </div>
     
-    <div class="max-w-7xl mx-auto px-8 py-8 pb-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-8 py-8 pb-12">
       <div class="rounded-2xl overflow-hidden" style="border:1.5px solid rgba(215,210,203,0.09);">
-        <table class="w-full" style="border-collapse:collapse;">
+        <div class="overflow-x-auto">
+        <table class="w-full text-left" style="border-collapse:collapse; min-width:600px;">
           <thead style="background:rgba(36,17,52,0.8);">
             <tr>
               <th>Code</th>
@@ -168,6 +179,7 @@
           </thead>
           <tbody id="codes-tbody" style="background:rgba(30,16,48,0.6);"></tbody>
         </table>
+        </div>
         <div id="codes-empty" class="hidden text-center py-12" style="color:rgba(215,210,203,0.3);">
           <p class="text-sm">No invitation codes found.</p>
         </div>
@@ -177,21 +189,22 @@
 
   <!-- STUDENTS VIEW -->
   <div id="view-students" class="admin-view hidden">
-    <div class="px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+    <div class="px-4 sm:px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
       <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
           <h1 class="text-xl font-bold text-white">Registered Students</h1>
           <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">View and export all student accounts on the platform.</p>
         </div>
         <div class="flex items-center gap-3">
-          <button onclick="exportStudents()" class="btn-edit whitespace-nowrap" style="color:#6ee7b7;border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);">📥 Export Excel</button>
+          <button onclick="exportStudents()" class="btn-edit w-full sm:w-auto whitespace-nowrap" style="color:#6ee7b7;border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);">📥 Export Excel</button>
         </div>
       </div>
     </div>
     
-    <div class="max-w-7xl mx-auto px-8 py-8 pb-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-8 py-8 pb-12">
       <div class="rounded-2xl overflow-hidden" style="border:1.5px solid rgba(215,210,203,0.09);">
-        <table class="w-full" style="border-collapse:collapse;">
+        <div class="overflow-x-auto">
+        <table class="w-full text-left" style="border-collapse:collapse; min-width:700px;">
           <thead style="background:rgba(36,17,52,0.8);">
             <tr>
               <th>Name</th>
@@ -203,6 +216,7 @@
           </thead>
           <tbody id="students-tbody" style="background:rgba(30,16,48,0.6);"></tbody>
         </table>
+        </div>
         <div id="students-empty" class="hidden text-center py-12" style="color:rgba(215,210,203,0.3);">
           <p class="text-sm">No students registered yet.</p>
         </div>
@@ -212,14 +226,14 @@
 
   <!-- PAGE ACCESS VIEW -->
   <div id="view-pages" class="admin-view hidden">
-    <div class="px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+    <div class="px-4 sm:px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
       <div class="max-w-7xl mx-auto">
         <h1 class="text-xl font-bold text-white">Page Access Control</h1>
         <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Control which mission phases students can access. Mission, Components, and CONOPS are always open.</p>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-8 py-8 pb-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-8 py-8 pb-12">
       <!-- Always open notice -->
       <div class="rounded-xl px-4 py-3 mb-6 text-sm" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:#6ee7b7;">
         ✅ <strong>Always Unlocked:</strong> Mission Creation, Component Selection, CONOPS — students can always access these.
@@ -288,6 +302,14 @@
               <option value="">Select…</option>
               <option>ADCS</option><option>CDHS</option><option>EPS</option>
               <option>COMMS</option><option>Payload</option><option>Structure</option><option>Thermal</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Tag</label>
+            <select id="f-tag" class="input-field">
+              <option value="">None</option>
+              <option value="TinkerCAD">TinkerCAD</option>
+              <option value="Physical">Physical</option>
             </select>
           </div>
           <div>
@@ -664,6 +686,7 @@
             </div>
           </td>
           <td><span class="subsystem-badge" style="background:${bc.bg};color:${bc.color};">${c.subsystem}</span></td>
+          <td><span class="text-xs px-2 py-1 rounded-md" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">${c.tag || '–'}</span></td>
           <td class="text-xs"><span class="text-white font-medium">${c.voltage_v??'–'}V</span> / ${c.current_ma??'–'}mA</td>
           <td class="text-xs text-white">${c.scaled_mass_g??'–'}g</td>
           <td class="text-xs font-medium" style="color:#fcd34d;">${c.assumed_cost_usd ? '$'+Number(c.assumed_cost_usd).toLocaleString() : '–'}</td>
@@ -701,6 +724,7 @@
       document.getElementById('edit-id').value = comp.id;
       document.getElementById('f-name').value = comp.component_name || '';
       document.getElementById('f-subsystem').value = comp.subsystem || '';
+      document.getElementById('f-tag').value = comp.tag || '';
       document.getElementById('f-code').value = comp.component_code || '';
       document.getElementById('f-role').value = comp.example_role || '';
       document.getElementById('f-desc').value = comp.scaled_description || '';
@@ -736,6 +760,7 @@
       const payload = {
         component_name: document.getElementById('f-name').value.trim(),
         subsystem: document.getElementById('f-subsystem').value,
+        tag: document.getElementById('f-tag').value || null,
         component_code: document.getElementById('f-code').value.trim() || null,
         example_role: document.getElementById('f-role').value.trim() || null,
         scaled_description: document.getElementById('f-desc').value.trim() || null,
