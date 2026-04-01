@@ -80,12 +80,17 @@
 
             <!-- Band Selector -->
             <div>
-              <label class="block text-xs font-semibold mb-2" style="color:rgba(215,210,203,0.5);">Band / Profile</label>
+              <label class="block text-xs font-semibold mb-2" style="color:rgba(215,210,203,0.5);">Step 1: Choose Band / Profile</label>
               <div id="band-pills" class="flex gap-2 flex-wrap"></div>
             </div>
 
-            <!-- Fields -->
-            <div class="space-y-4">
+            <div id="no-band-msg" class="p-6 text-center border-2 border-dashed border-white/10 rounded-xl">
+               <p class="text-xs italic" style="color:rgba(215,210,203,0.4);">Please select a Band above to begin your link analysis.</p>
+            </div>
+
+            <!-- Fields (hidden initially for new users) -->
+            <div id="input-fields" class="space-y-4 hidden">
+              <p class="text-[10px] font-bold uppercase tracking-widest text-[#c4a0e8]" style="margin-bottom:-10px;">Step 2: Satellite Transmitter & Frequency</p>
               <div>
                 <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Downlink Frequency</label>
                 <div class="flex items-center gap-2">
@@ -121,18 +126,23 @@
                   <span class="unit-label">dB</span>
                 </div>
               </div>
-              <div>
-                <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Assumed Distance</label>
-                <div class="flex items-center gap-2">
-                  <input type="number" id="distance-km" class="field-input" step="1" min="0" placeholder="e.g. 500" oninput="onInputChange()" />
-                  <span class="unit-label">km</span>
-                </div>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Transmit Power</label>
-                <div class="flex items-center gap-2">
-                  <input type="number" id="tx-power" class="field-input" step="0.1" placeholder="e.g. 30" oninput="onInputChange()" />
-                  <span class="unit-label">dBm</span>
+              <div class="pt-2">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-[#c4a0e8]" style="margin-bottom:8px;">Step 3: Ground Station Settings</p>
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Assumed Distance</label>
+                    <div class="flex items-center gap-2">
+                      <input type="number" id="distance-km" class="field-input" step="1" min="0" placeholder="e.g. 500" oninput="onInputChange()" />
+                      <span class="unit-label">km</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold mb-1" style="color:rgba(215,210,203,0.5);">Satellite Transmit Power</label>
+                    <div class="flex items-center gap-2">
+                      <input type="number" id="tx-power" class="field-input" step="0.1" placeholder="e.g. 30" oninput="onInputChange()" />
+                      <span class="unit-label">dBm</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -243,7 +253,7 @@
 
   // ── State ────────────────────────────────────────────────────────────────────
   let constraints={good_link_margin_threshold_db:3,weak_link_margin_threshold_db:0};
-  let presets=[], activeBand='UHF', mission=null, linkIsSaved=false;
+  let presets=[], activeBand=null, mission=null, linkIsSaved=false;
   let cCompare=null, cMargin=null;
 
   // ── FSPL + Link Calc (frontend mirror for live updates) ──────────────────────
@@ -296,6 +306,8 @@
 
     if(!linkIsSaved){
       // First time — leave all fields empty for the student to fill
+      document.getElementById('input-fields').classList.add('hidden');
+      document.getElementById('no-band-msg').classList.remove('hidden');
       document.getElementById('dl-freq').value='';
       document.getElementById('ul-freq').value='';
       document.getElementById('gain').value='';
@@ -303,19 +315,22 @@
       document.getElementById('req-snr').value='';
       document.getElementById('distance-km').value='';
       document.getElementById('tx-power').value='';
+      renderMissionBar('–');
     } else {
+      document.getElementById('input-fields').classList.remove('hidden');
+      document.getElementById('no-band-msg').classList.add('hidden');
       document.getElementById('dl-freq').value=lData.downlink_frequency_mhz;
       document.getElementById('ul-freq').value=lData.uplink_frequency_mhz;
       document.getElementById('gain').value=lData.satellite_antenna_gain_dbi;
       document.getElementById('data-rate').value=lData.data_rate_kbps;
       document.getElementById('req-snr').value=lData.required_signal_quality_db;
-      document.getElementById('distance-km').value=lData.constraints.assumed_distance_km||'';
-      document.getElementById('tx-power').value=lData.constraints.transmit_power_dbm||'';
+      document.getElementById('distance-km').value=lData.constraints.assumed_distance_km;
+      document.getElementById('tx-power').value=lData.constraints.transmit_power_dbm;
+      renderMissionBar(lData.calculated.link_status);
+      onInputChange();
     }
 
     renderBandPills();
-    renderMissionBar(lData.calculated.link_status);
-    onInputChange();
   }
   init();
 
@@ -326,7 +341,7 @@
     document.getElementById('sec-mission').innerHTML=`
       <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Mission</p><p class="text-sm font-bold text-white">${mission?.mission_name||'–'}</p></div>
       <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Orbit</p><p class="text-sm font-bold text-white">${mission?.orbit_type||'–'}</p></div>
-      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Band</p><p class="text-sm font-bold text-white">${activeBand}</p></div>
+      <div><p class="text-xs uppercase tracking-widest font-semibold" style="color:rgba(215,210,203,0.4);">Band</p><p class="text-sm font-bold text-white">${activeBand||'–'}</p></div>
       <div><span class="text-xs font-bold px-3 py-1 rounded-full ${s.cls}">${s.txt}</span></div>`;
   }
 
@@ -339,26 +354,20 @@
   function selectBand(band){
     activeBand=band;
     renderBandPills();
+    document.getElementById('input-fields').classList.remove('hidden');
+    document.getElementById('no-band-msg').classList.add('hidden');
     const preset=presets.find(p=>p.band_profile===band);
     if(preset){
-      // For S-Band always auto-fill; for UHF only fill if unsaved
-      if(band !== 'UHF' || linkIsSaved){
-        document.getElementById('dl-freq').value=preset.downlink_frequency_mhz;
-        document.getElementById('ul-freq').value=preset.uplink_frequency_mhz;
-        document.getElementById('gain').value=preset.satellite_antenna_gain_dbi;
-        document.getElementById('data-rate').value=preset.data_rate_kbps;
-        document.getElementById('req-snr').value=preset.required_signal_quality_db;
-        document.getElementById('distance-km').value=constraints.assumed_distance_km||'';
-        document.getElementById('tx-power').value=constraints.transmit_power_dbm||'';
-      } else {
-        // UHF first-time: clear all student fields
-        document.getElementById('dl-freq').value='';
-        document.getElementById('ul-freq').value='';
-        document.getElementById('gain').value='';
-        document.getElementById('data-rate').value='';
-        document.getElementById('req-snr').value='';
-        document.getElementById('distance-km').value='';
-        document.getElementById('tx-power').value='';
+      // Only auto-fill if not saved yet, OR if switching profiles on a fresh session
+      document.getElementById('dl-freq').value=preset.downlink_frequency_mhz;
+      document.getElementById('ul-freq').value=preset.uplink_frequency_mhz;
+      document.getElementById('gain').value=preset.satellite_antenna_gain_dbi;
+      document.getElementById('data-rate').value=preset.data_rate_kbps;
+      document.getElementById('req-snr').value=preset.required_signal_quality_db;
+      // Also reset Distance/Power to mission defaults if it's the first time
+      if (!linkIsSaved) {
+        document.getElementById('distance-km').value=constraints.assumed_distance_km;
+        document.getElementById('tx-power').value=constraints.transmit_power_dbm;
       }
     }
     onInputChange();
@@ -448,6 +457,7 @@
 
   // ── Save ─────────────────────────────────────────────────────────────────────
   async function saveBudget(){
+    if(!activeBand){ alert('Please select a band (Step 1) first!'); return; }
     const btn=document.getElementById('btn-save');
     btn.textContent='Saving…';btn.disabled=true;
     const payload={
@@ -457,6 +467,8 @@
       satellite_antenna_gain_dbi:parseFloat(document.getElementById('gain').value)||0,
       data_rate_kbps:parseFloat(document.getElementById('data-rate').value)||0,
       required_signal_quality_db:parseFloat(document.getElementById('req-snr').value)||0,
+      transmit_power_dbm:parseFloat(document.getElementById('tx-power').value)||0,
+      assumed_distance_km:parseFloat(document.getElementById('distance-km').value)||0,
       notes:null
     };
     try{

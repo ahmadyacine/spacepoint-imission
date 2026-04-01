@@ -21,6 +21,8 @@ class LinkBudgetEntryInput(BaseModel):
     satellite_antenna_gain_dbi: float = 2.0
     data_rate_kbps: float = 9.6
     required_signal_quality_db: float = 9.6
+    transmit_power_dbm: float = 30.0
+    assumed_distance_km: float = 500.0
     notes: Optional[str] = None
 
 # ── Calculated outputs ────────────────────────────────────────────────────────

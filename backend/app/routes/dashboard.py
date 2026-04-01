@@ -152,9 +152,9 @@ def _calc_power(mission: Mission, mc_list, modes, constraint: MissionConstraint,
 
 def _calc_link(mission: Mission, constraint: MissionConstraint, db: Session) -> dict:
     entry = db.query(LinkBudgetEntry).filter(LinkBudgetEntry.mission_id == mission.id).first()
-    has_data = entry is not None
-    if not entry:
+    if not entry or not entry.updated_at or entry.updated_at <= entry.created_at:
         return {"is_valid": False, "has_data": False, "margin_db": 0.0, "status": "No Link Data"}
+    
     result = calculate_link_budget(
         downlink_frequency_mhz=entry.downlink_frequency_mhz,
         satellite_antenna_gain_dbi=entry.satellite_antenna_gain_dbi,

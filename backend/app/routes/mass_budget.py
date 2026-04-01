@@ -140,12 +140,15 @@ def get_mass_budget(
     cubesat_size = getattr(constraint, 'selected_cubesat_size', None) or '1U'
     avail_vol = constraint.available_internal_volume_cm3
 
+    is_saved = db.query(MassBudgetEntry).join(MissionComponent).filter(MissionComponent.mission_id == mission_id).count() > 0
+
     return {
         "constraints": {
             "max_allowed_mass_kg": constraint.max_allowed_mass_kg,
             "selected_cubesat_size": cubesat_size,
             "available_internal_volume_cm3": avail_vol,
             "presets": [p.dict() for p in _cubesat_preset_list()],
+            "is_saved": is_saved,
         },
         "rows": [r.dict() for r in rows],
     }
@@ -260,6 +263,8 @@ def get_mass_budget_summary(
     ]
     top_sorted = sorted(top, key=lambda x: x.total_mass_g, reverse=True)[:6]
 
+    is_saved = db.query(MassBudgetEntry).join(MissionComponent).filter(MissionComponent.mission_id == mission_id).count() > 0
+
     return MassBudgetSummaryOut(
         total_mass_g=round(total_mass_g, 3),
         total_mass_kg=round(total_mass_kg, 6),
@@ -278,6 +283,7 @@ def get_mass_budget_summary(
         subsystem_totals=subsystem_totals,
         top_components=top_sorted,
         validation_messages=messages,
+        is_saved=is_saved,
     )
 
 

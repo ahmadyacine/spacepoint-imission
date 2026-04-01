@@ -107,9 +107,11 @@ def save_link_budget(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _get_mission_or_404(mission_id, current_user.id, db)
+    mission = _get_mission_or_404(mission_id, current_user.id, db)
+    constraint = _ensure_constraint(mission, db)
     entry = _ensure_entry(mission_id, db)
 
+    # 1. Update Entry
     entry.band_profile = payload.band_profile
     entry.downlink_frequency_mhz = payload.downlink_frequency_mhz
     entry.uplink_frequency_mhz = payload.uplink_frequency_mhz
@@ -118,6 +120,12 @@ def save_link_budget(
     entry.required_signal_quality_db = payload.required_signal_quality_db
     entry.notes = payload.notes
     entry.updated_at = datetime.utcnow()
+
+    # 2. Update Constraints (Distance, TxPower)
+    constraint.assumed_distance_km = payload.assumed_distance_km
+    constraint.transmit_power_dbm = payload.transmit_power_dbm
+    constraint.updated_at = datetime.utcnow()
+
     db.commit()
     return {"message": "Link budget saved successfully"}
 

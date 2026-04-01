@@ -57,6 +57,7 @@ class MassConstraintsOut(BaseModel):
     selected_cubesat_size: str
     available_internal_volume_cm3: float
     presets: List[CubeSatPreset]
+    is_saved: bool = False
 
 
 class ConstraintUpdate(BaseModel):
@@ -102,3 +103,4 @@ class MassBudgetSummaryOut(BaseModel):
     subsystem_totals: List[SubsystemMassTotal]
     top_components: List[TopMassComponent]
     validation_messages: List[str]
+    is_saved: bool = False

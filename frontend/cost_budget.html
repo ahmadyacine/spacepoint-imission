@@ -52,6 +52,23 @@
       <span id="mission-badge" class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:rgba(101,63,132,0.3);color:#c4a0e8;">Loading…</span>
     </div>
     <div class="flex items-center gap-3">
+      <div class="relative inline-block text-left" id="currency-dropdown-container">
+        <button onclick="toggleCurrencyDropdown()" id="currency-trigger" class="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#c4a0e844] bg-[#c4a0e81a] hover:bg-[#c4a0e82a] hover:border-[#c4a0e8aa] transition-all duration-300 shadow-lg shadow-black/20">
+          <span class="text-[9px] font-black uppercase tracking-[0.15em] text-[#c4a0e8cc]">Currency</span>
+          <span id="selected-currency-label" class="text-xs font-extrabold text-white tracking-wide">AED</span>
+          <svg class="w-2.5 h-2.5 text-[#c4a0e8cc]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+        </button>
+        <div id="currency-menu" class="hidden absolute right-0 mt-3 w-52 rounded-2xl bg-[#241134] border border-[#c4a0e844] shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] backdrop-blur-xl overflow-hidden ring-1 ring-white/5">
+          <div class="p-1.5 grid grid-cols-1 gap-1">
+            <button onclick="changeCurrency('AED')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-[#c4a0e8] hover:bg-[#c4a0e822] hover:text-white rounded-xl transition-all flex justify-between items-center group"><span>UAE Dirham</span> <span class="opacity-50 group-hover:opacity-100 transition-opacity">AED 🇦🇪</span></button>
+            <button onclick="changeCurrency('USD')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-[#c4a0e8] hover:bg-[#c4a0e822] hover:text-white rounded-xl transition-all flex justify-between items-center group"><span>US Dollar</span> <span class="opacity-50 group-hover:opacity-100 transition-opacity">USD 🇺🇸</span></button>
+            <button onclick="changeCurrency('EUR')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-[#c4a0e8] hover:bg-[#c4a0e822] hover:text-white rounded-xl transition-all flex justify-between items-center group"><span>Euro</span> <span class="opacity-50 group-hover:opacity-100 transition-opacity">EUR 🇪🇺</span></button>
+            <button onclick="changeCurrency('GBP')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-[#c4a0e8] hover:bg-[#c4a0e822] hover:text-white rounded-xl transition-all flex justify-between items-center group"><span>British Pound</span> <span class="opacity-50 group-hover:opacity-100 transition-opacity">GBP 🇬🇧</span></button>
+            <button onclick="changeCurrency('JPY')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-[#c4a0e8] hover:bg-[#c4a0e822] hover:text-white rounded-xl transition-all flex justify-between items-center group"><span>Japanese Yen</span> <span class="opacity-50 group-hover:opacity-100 transition-opacity">JPY 🇯🇵</span></button>
+            <button onclick="changeCurrency('CAD')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-[#c4a0e8] hover:bg-[#c4a0e822] hover:text-white rounded-xl transition-all flex justify-between items-center group"><span>Canadian Dollar</span> <span class="opacity-50 group-hover:opacity-100 transition-opacity">CAD 🇨🇦</span></button>
+          </div>
+        </div>
+      </div>
       <button onclick="window.location.href = '/mass-budget'" class="btn-sec text-xs px-3 py-1.5">← Mass Budget</button>
       <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border hover:bg-white/5" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
     </div>
@@ -96,8 +113,8 @@
                 <div class="col-span-2 border-b pb-2 mb-1" style="border-color:rgba(215,210,203,0.1);">
                   <p class="text-[10px] font-bold uppercase tracking-widest" style="color:rgba(215,210,203,0.4);">Cost Summary</p>
                 </div>
-                <div><p class="text-[10px] text-zinc-500">Total Cost (AED)</p><p class="text-lg font-bold" id="sum-total-cost">-</p></div>
-                <div><p class="text-[10px] text-zinc-500">Cost Margin (AED)</p><p class="text-lg font-bold" id="sum-cost-mar">-</p></div>
+                <div><p class="text-[10px] text-zinc-500" id="lbl-total-cost">Total Cost</p><p class="text-lg font-bold" id="sum-total-cost">-</p></div>
+                <div><p class="text-[10px] text-zinc-500" id="lbl-cost-mar">Cost Margin</p><p class="text-lg font-bold" id="sum-cost-mar">-</p></div>
              </div>
 
              <div class="card p-5">
@@ -122,6 +139,16 @@
 
         <!-- Section C: Table + Charts (RightCol) -->
         <div class="lg:col-span-9 space-y-6">
+          <!-- Alert -->
+          <div id="alert-banner" class="hidden rounded-xl px-4 py-3 text-sm font-medium"></div>
+
+          <!-- Currency Hint -->
+          <div class="px-6 py-2 bg-[#c4a0e811] border border-[#c4a0e822] rounded-xl flex items-center gap-3">
+            <span class="text-lg">💡</span>
+            <p class="text-xs text-[#c4a0e8cc] font-medium italic">
+              <strong>Tip:</strong> You can change the mission currency from the top menu dropdown. All costs and budgets will automatically convert to your choice.
+            </p>
+          </div>
           <div class="card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full text-xs" style="border-collapse:collapse; min-width:1200px;">
@@ -129,8 +156,8 @@
                   <tr>
                     <th style="min-width:200px; text-align:left;">Component</th>
                     <th style="width:80px;">Qty</th>
-                    <th style="width:120px;">Cost/Unit (AED)</th>
-                    <th style="width:120px;">Total (AED)</th>
+                    <th style="width:120px;" id="th-cpu">Cost/Unit</th>
+                    <th style="width:120px;" id="th-total">Total</th>
                     <th style="width:140px;">Priority</th>
                     <th style="min-width:150px;">Vendor</th>
                     <th style="min-width:150px;">Link</th>
@@ -144,15 +171,15 @@
           <!-- Section E: Charts (Larger Layout) -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div class="card p-6 flex flex-col items-center">
-                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">⚖️ Cost by Subsystem</p>
+                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" id="lbl-subsystem-charts" style="color:rgba(215,210,203,0.4);">⚖️ Cost by Subsystem</p>
                 <div class="w-full h-64 flex justify-center"><canvas id="chart-subsystem"></canvas></div>
              </div>
              <div class="card p-6 flex flex-col items-center">
-                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">🎯 Used vs Remaining</p>
+                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" id="lbl-used-charts" style="color:rgba(215,210,203,0.4);">🎯 Used vs Remaining</p>
                 <div class="w-full h-64 flex justify-center"><canvas id="chart-used"></canvas></div>
              </div>
              <div class="card p-6 col-span-1 md:col-span-2">
-                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">📊 Top Components by Cost (AED)</p>
+                <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" id="lbl-top-charts" style="color:rgba(215,210,203,0.4);">📊 Top Components by Cost (AED)</p>
                 <div class="w-full h-64"><canvas id="chart-top"></canvas></div>
              </div>
           </div>
@@ -222,10 +249,78 @@
   let mission = null;
   let constraints = null;
   
+  let selectedCurrency = 'AED';
+  let currencyRates = { 'AED': 3.67, 'USD': 1.0 };
+  const usdToAedFixed = 3.67;
+
   let cSub, cTop, cUsed;
+
+  async function loadExchangeRates() {
+    try {
+      const res = await fetch('https://api.frankfurter.app/latest?from=USD');
+      if (!res.ok) throw new Error('API failed');
+      const data = await res.json();
+      currencyRates = { ...data.rates, 'USD': 1.0 };
+      // Ensure AED is at least available from backend default if missing
+      if (!currencyRates['AED']) currencyRates['AED'] = 3.67;
+    } catch(e) {
+      console.warn('Real-time rates could not be loaded, using defaults.', e);
+    }
+  }
+
+  function toDisplay(aedVal) {
+    const usdVal = aedVal / usdToAedFixed;
+    return usdVal * (currencyRates[selectedCurrency] || 1.0);
+  }
+
+  function fromDisplay(dispVal) {
+    const usdVal = dispVal / (currencyRates[selectedCurrency] || 1.0);
+    return usdVal * usdToAedFixed;
+  }
+
+  function formatCost(aedVal) {
+    const val = toDisplay(aedVal);
+    const sym = { 'USD':'$','EUR':'€','GBP':'£','JPY':'¥' }[selectedCurrency] || '';
+    const formatted = val.toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
+    return sym ? `${sym}${formatted}` : `${formatted} ${selectedCurrency}`;
+  }
+
+  function toggleCurrencyDropdown() {
+    const menu = document.getElementById('currency-menu');
+    menu.classList.toggle('hidden');
+    // Close when clicking outside
+    const close = (e) => {
+      if (!document.getElementById('currency-dropdown-container').contains(e.target)) {
+        menu.classList.add('hidden');
+        document.removeEventListener('click', close);
+      }
+    };
+    if (!menu.classList.contains('hidden')) {
+      setTimeout(() => document.addEventListener('click', close), 10);
+    }
+  }
+
+  async function changeCurrency(curr) {
+    selectedCurrency = curr;
+    localStorage.setItem('sp_selected_currency', curr);
+    document.getElementById('selected-currency-label').textContent = curr;
+    document.getElementById('currency-menu').classList.add('hidden');
+    
+    // Update Max Budget label
+    if (constraints) {
+      document.getElementById('const-budget').textContent = formatCost(constraints.maximum_budget_aed);
+    }
+    
+    renderTable();
+    recalcLocalSummary(); 
+  }
 
   async function init(){
     try{
+      selectedCurrency = localStorage.getItem('sp_selected_currency') || 'AED';
+      document.getElementById('selected-currency-label').textContent = selectedCurrency;
+      
+      await loadExchangeRates();
       const r = await fetch(`${API_URL}/missions/${missionId}/cost-budget`,{
         headers:{'Authorization':`Bearer ${token}`}
       });
@@ -238,7 +333,7 @@
       rows = res.rows;
 
       document.getElementById('mission-badge').textContent = mission.mission_name;
-      document.getElementById('const-budget').textContent = `${constraints.maximum_budget_aed.toLocaleString()} AED`;
+      document.getElementById('const-budget').textContent = formatCost(constraints.maximum_budget_aed);
       
       renderTable();
       updateSummaryUI(data);
@@ -258,6 +353,8 @@
 
   function renderTable(){
     const PRIORITIES = ["Critical", "High", "Medium", "Low"];
+    document.getElementById('th-cpu').textContent = `Cost/Unit (${selectedCurrency})`;
+    document.getElementById('th-total').textContent = `Total (${selectedCurrency})`;
     document.getElementById('cost-tbody').innerHTML = rows.map((r,idx)=>{
       const sc = SC[r.subsystem] || { bg:'rgba(101,63,132,0.3)', color:'#c4a0e8' };
       
@@ -279,8 +376,8 @@
           </div>
         </td>
         <td><input type="number" class="field-input px-2" value="${r.quantity}" min="0" oninput="liveUpdate(${idx},'quantity',this.value)"/></td>
-        <td><input type="number" class="field-input px-2" value="${r.cost_per_unit_aed||0}" step="1" min="0" oninput="liveUpdate(${idx},'cost_per_unit_aed',this.value)"/></td>
-        <td><div class="calc-cell" id="tc-${idx}">${r.total_cost_aed.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></td>
+        <td><input type="number" class="field-input px-2" value="${toDisplay(r.cost_per_unit_aed||0).toFixed(2)}" step="0.01" min="0" oninput="liveUpdate(${idx},'cost_per_unit_aed',this.value)"/></td>
+        <td><div class="calc-cell" id="tc-${idx}">${formatCost(r.total_cost_aed)}</div></td>
         <td>
           <select class="field-input !py-[0.35rem]" onchange="liveUpdate(${idx},'priority',this.value)">
             ${prioOptions}
@@ -294,12 +391,14 @@
 
   function liveUpdate(idx, field, rawValue){
     let val = rawValue;
-    if(field==='quantity' || field==='cost_per_unit_aed') {
+    if(field==='quantity') {
       val = parseFloat(rawValue) || 0;
+    } else if(field==='cost_per_unit_aed') {
+      val = fromDisplay(parseFloat(rawValue) || 0);
     }
     rows[idx][field] = val;
     rows[idx].total_cost_aed = rows[idx].quantity * (rows[idx].cost_per_unit_aed || 0);
-    document.getElementById(`tc-${idx}`).textContent = rows[idx].total_cost_aed.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    document.getElementById(`tc-${idx}`).textContent = formatCost(rows[idx].total_cost_aed);
     
     // Quick recalculate local summary
     recalcLocalSummary();
@@ -334,7 +433,7 @@
       most_expensive_cost: top6.length ? top6[0].cost : 0,
       subsystem_totals: subArr,
       top_components: top6.map(t=>({component_name:t.name, total_cost_aed:t.cost, subsystem:t.sub})),
-      validation_messages: isValid ? ["Mission cost is within the allowed budget."] : [`Mission cost exceeds the maximum budget. Margin: ${margin.toFixed(2)} AED.`]
+      validation_messages: isValid ? ["Mission cost is within the allowed budget."] : [`Mission cost exceeds the maximum budget. Margin: ${formatCost(margin)}.`]
     };
 
     updateSummaryUI(mockData);
@@ -349,12 +448,12 @@
       </div>
     `;
 
-    document.getElementById('sum-total-cost').textContent = `${data.total_platform_cost_aed.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} AED`;
-    document.getElementById('sum-cost-mar').textContent = `${data.cost_margin_aed.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} AED`;
+    document.getElementById('sum-total-cost').textContent = formatCost(data.total_platform_cost_aed);
+    document.getElementById('sum-cost-mar').textContent = formatCost(data.cost_margin_aed);
     document.getElementById('sum-cost-mar').className = `text-xl font-bold ${data.is_valid?'text-green-400':'text-red-400'}`;
 
     document.getElementById('most-exp-name').textContent = data.most_expensive_component || '-';
-    document.getElementById('most-exp-cost').textContent = `${data.most_expensive_cost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} AED`;
+    document.getElementById('most-exp-cost').textContent = formatCost(data.most_expensive_cost);
 
     const ab = document.getElementById('alert-banner');
     ab.classList.remove('hidden');
@@ -362,6 +461,12 @@
     ab.textContent = data.validation_messages.join(' ');
 
     document.getElementById('btn-next').disabled = !data.is_valid;
+
+    document.getElementById('lbl-total-cost').textContent = `Total Cost (${selectedCurrency})`;
+    document.getElementById('lbl-cost-mar').textContent = `Cost Margin (${selectedCurrency})`;
+    document.getElementById('lbl-top-charts').textContent = `📊 Top Components by Cost (${selectedCurrency})`;
+    document.getElementById('lbl-subsystem-charts').textContent = `⚖️ Cost by Subsystem (${selectedCurrency})`;
+    document.getElementById('lbl-used-charts').textContent = `🎯 Used vs Remaining (${selectedCurrency})`;
 
     renderCharts(data);
   }
@@ -377,7 +482,7 @@
       data:{
         labels: data.subsystem_totals.map(s=>s.subsystem),
         datasets:[{
-          data: data.subsystem_totals.map(s=>s.cost),
+          data: data.subsystem_totals.map(s=>toDisplay(s.cost)),
           backgroundColor: data.subsystem_totals.map(s=>SC[s.subsystem]?.color||'#653f84'),
           borderWidth:0
         }]
@@ -387,8 +492,8 @@
 
     // Used vs Remaining
     if(cUsed) cUsed.destroy();
-    let used = data.total_platform_cost_aed;
-    let rem = Math.max(0, data.maximum_budget_aed - used);
+    let used = toDisplay(data.total_platform_cost_aed);
+    let rem = Math.max(0, toDisplay(data.maximum_budget_aed) - used);
     cUsed = new Chart(document.getElementById('chart-used'),{
       type:'doughnut',
       data:{
@@ -409,8 +514,8 @@
       data:{
         labels: data.top_components.map(t=>t.component_name.substring(0,10)+'...'),
         datasets:[{
-          label:'Total Cost (AED)',
-          data: data.top_components.map(t=>t.total_cost_aed),
+          label:`Total Cost (${selectedCurrency})`,
+          data: data.top_components.map(t=>toDisplay(t.total_cost_aed)),
           backgroundColor: data.top_components.map(t=>SC[t.subsystem]?.color||'#653f84'),
           borderRadius:4
         }]

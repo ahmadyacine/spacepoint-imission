@@ -82,7 +82,7 @@
         <div class="lg:col-span-3 space-y-5">
           <div class="card p-6 space-y-5">
             <div>
-              <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">🛰️ CubeSat Size</p>
+              <p class="text-xs font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.4);">Step 1: 🛰️ CubeSat Size</p>
               <div id="size-selector" class="grid grid-cols-2 gap-2"></div>
             </div>
             
@@ -145,8 +145,15 @@
         <!-- Section C: Table + Charts (RightCol) -->
         <div class="lg:col-span-9 space-y-6">
 
-          <!-- Volume column note -->
-          <div class="formula-box flex gap-4 items-start">
+          <div id="no-size-msg" class="card p-12 text-center border-2 border-dashed border-white/10">
+             <div class="text-4xl mb-4">🛰️</div>
+             <p class="text-sm font-bold text-white mb-2">Select Your CubeSat Size First</p>
+             <p class="text-xs italic" style="color:rgba(215,210,203,0.4);">Please choose a standard size on the left (Step 1) to unlock the Mass Budget analysis.</p>
+          </div>
+
+          <div id="main-analysis" class="space-y-6 hidden">
+            <!-- Volume column note -->
+            <div class="formula-box flex gap-4 items-start">
             <div class="text-lg pt-0.5">📦</div>
             <div class="text-xs space-y-1.5" style="color:rgba(215,210,203,0.65);">
               <p class="font-bold uppercase tracking-widest text-[10px] mb-2" style="color:#c4a0e8;">Understanding the Volume Columns</p>
@@ -191,6 +198,7 @@
                 <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full" style="color:rgba(215,210,203,0.4);">📊 Top Components by Mass (g)</p>
                 <div class="w-full h-64"><canvas id="chart-top"></canvas></div>
              </div>
+           </div>
           </div>
         </div>
 
@@ -243,7 +251,7 @@
   }).join('');
 
   // ── State ────────────────────────────────────────────────────────────────────
-  let rows=[], constraints={}, presets=[], mission=null;
+  let rows=[], constraints={}, presets=[], mission=null, massIsSaved=false;
   let cSubsystem=null, cVolume=null, cTop=null;
   const SC={ADCS:{bg:'rgba(59,130,246,0.2)',color:'#93c5fd'},CDHS:{bg:'rgba(16,185,129,0.2)',color:'#6ee7b7'},EPS:{bg:'rgba(245,158,11,0.2)',color:'#fcd34d'},COMMS:{bg:'rgba(239,68,68,0.2)',color:'#fca5a5'},Payload:{bg:'rgba(139,92,246,0.2)',color:'#c4b5fd'},Structure:{bg:'rgba(156,163,175,0.2)',color:'#d1d5db'},Thermal:{bg:'rgba(236,72,153,0.2)',color:'#f9a8d4'}};
 
@@ -255,16 +263,29 @@
     ]);
     if(!mRes.ok || !bRes.ok){alert('Load failed');return;}
     mission=await mRes.json();
-    const bData=await bRes.json();
+    const bData=await bRes.json(); // Fixed: actually parsing the data
     rows=bData.rows;
     constraints=bData.constraints;
     presets=constraints.presets;
+    massIsSaved=constraints.is_saved;
 
     document.getElementById('mission-badge').textContent=mission.mission_name;
+    
+    // 1. Initial Bar Rendering
     renderMissionBar();
+
+    if(!massIsSaved){
+       document.getElementById('main-analysis').classList.add('hidden');
+       document.getElementById('no-size-msg').classList.remove('hidden');
+       updateBarBadges('Heavy', 'Large'); // Set initial placeholders
+    } else {
+       document.getElementById('main-analysis').classList.remove('hidden');
+       document.getElementById('no-size-msg').classList.add('hidden');
+       recalcAll();
+    }
+
     renderSizeSelector();
     renderTable();
-    recalcAll();
   }
   init();
 
@@ -305,6 +326,10 @@
       constraints.available_internal_volume_cm3=p.available_volume_cm3;
       constraints.max_allowed_mass_kg=p.max_mass_kg;
     }
+    
+    document.getElementById('main-analysis').classList.remove('hidden');
+    document.getElementById('no-size-msg').classList.add('hidden');
+    
     renderSizeSelector();
     const missionBarSize = document.getElementById('mission-bar-size');
     if(missionBarSize) missionBarSize.textContent=size;
@@ -484,7 +509,16 @@
       const res=await fetch(`${API}/missions/${missionId}/mass-budget/save`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(payload)});
       if(!res.ok)throw new Error('Save failed');
       // Also save CubeSat size to constraints
-      await fetch(`${API}/missions/${missionId}/constraints`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({selected_cubesat_size:constraints.selected_cubesat_size,available_internal_volume_cm3:constraints.available_internal_volume_cm3})});
+      // Also save CubeSat size and related limits to constraints
+      await fetch(`${API}/missions/${missionId}/constraints`,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+        body:JSON.stringify({
+          selected_cubesat_size: constraints.selected_cubesat_size,
+          available_internal_volume_cm3: constraints.available_internal_volume_cm3,
+          max_allowed_mass_kg: constraints.max_allowed_mass_kg
+        })
+      });
       if(!silent){
         btn.textContent='✓ Saved!';btn.classList.add('status-ok');
         setTimeout(()=>{btn.textContent='💾 Save Mass Budget';btn.disabled=false;btn.classList.remove('status-ok');},2000);
