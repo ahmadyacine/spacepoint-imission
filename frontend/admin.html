@@ -207,12 +207,13 @@
         <table class="w-full text-left" style="border-collapse:collapse; min-width:700px;">
           <thead style="background:rgba(36,17,52,0.8);">
             <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>School Name</th>
-              <th>Grade</th>
-              <th>Joined Date</th>
-            </tr>
+               <th>Name</th>
+               <th>Email</th>
+               <th>School Name</th>
+               <th>Grade</th>
+               <th>Joined Date</th>
+               <th class="text-right pr-6">Actions</th>
+             </tr>
           </thead>
           <tbody id="students-tbody" style="background:rgba(30,16,48,0.6);"></tbody>
         </table>
@@ -277,6 +278,26 @@
           <button type="submit" id="btn-submit-code" class="btn-primary flex-1 py-2.5 rounded-xl text-sm">Save Code</button>
         </div>
       </form>
+    </div>
+  </div>
+
+    </div>
+  </div>
+  
+  <!-- Delete User Confirmation Modal -->
+  <div class="overlay" id="delete-user-modal" onclick="closeDeleteUserModal(event)">
+    <div class="modal text-center" onclick="event.stopPropagation()" style="max-width:400px;">
+      <div class="text-4xl mb-4">⚠️</div>
+      <h2 class="text-xl font-bold text-white mb-2">Delete Account?</h2>
+      <p class="text-sm mb-6" style="color:rgba(215,210,203,0.5);">
+        Are you sure you want to delete <span id="delete-user-name" class="font-bold text-white"></span>'s account? 
+        <br><br>
+        <span class="text-red-400 font-bold">This action cannot be undone.</span>
+      </p>
+      <div class="flex gap-3">
+        <button onclick="closeDeleteUserModal()" class="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors hover:bg-white/5" style="border:1px solid rgba(215,210,203,0.15);color:rgba(215,210,203,0.6);">Cancel</button>
+        <button id="btn-confirm-delete-user" class="flex-1 py-3 rounded-xl text-sm font-semibold bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 transition-all">Delete Account</button>
+      </div>
     </div>
   </div>
 
@@ -531,14 +552,57 @@
       tbody.innerHTML = allStudents.map(s => {
         const d = new Date(s.created_at).toLocaleDateString();
         return `
-        <tr>
+        <tr class="hover:bg-white/[0.02] transition-colors">
           <td class="font-semibold text-white">${s.full_name}</td>
           <td class="text-sm" style="color:rgba(215,210,203,0.7);">${s.email}</td>
           <td class="text-sm">${s.school_name || '–'}</td>
           <td class="text-sm">${s.grade || '–'}</td>
           <td class="text-sm">${d}</td>
+          <td class="text-right pr-6">
+            <button onclick="confirmDeleteUser('${s.id}', '${s.full_name}')" class="p-2 rounded-lg hover:bg-red-500/10 text-red-400/60 hover:text-red-400 transition-all" title="Delete Account">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          </td>
         </tr>
       `}).join('');
+    }
+
+    let studentToDelete = null;
+    function confirmDeleteUser(id, name) {
+      studentToDelete = id;
+      document.getElementById('delete-user-name').textContent = name;
+      const modal = document.getElementById('delete-user-modal');
+      modal.classList.add('open');
+      document.getElementById('btn-confirm-delete-user').onclick = () => deleteStudentAccount(id);
+    }
+
+    function closeDeleteUserModal(e) {
+      if (e && e.target !== document.getElementById('delete-user-modal')) return;
+      document.getElementById('delete-user-modal').classList.remove('open');
+      studentToDelete = null;
+    }
+
+    async function deleteStudentAccount(id) {
+      const btn = document.getElementById('btn-confirm-delete-user');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
+      try {
+        const res = await fetch(`${API}/auth/students/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok && res.status !== 204) throw new Error('Failed to delete student');
+        
+        closeDeleteUserModal();
+        showMsg('Student account deleted.', false);
+        loadStudents();
+      } catch (e) {
+        showMsg(e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
 
     function exportStudents() {

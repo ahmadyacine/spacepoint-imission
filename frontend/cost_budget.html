@@ -15,6 +15,7 @@
     body { font-family:'Inter',sans-serif; background:#1a0c27; color:#D7D2CB; }
     .card { background:rgba(255,255,255,0.04); border:1.5px solid rgba(215,210,203,0.08); border-radius:1rem; }
     .field-input { background:rgba(255,255,255,0.07); border:1px solid rgba(215,210,203,0.14); color:#D7D2CB; border-radius:0.6rem; padding:0.5rem 0.75rem; font-size:0.95rem; width:100%; min-width:6rem; transition:border-color 0.2s; }
+    .select-input { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(215,210,203,0.4)'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 0.7rem center; background-size:1rem; padding-right:2.2rem; }
     .field-input:focus { border-color:#653f84; outline:none; box-shadow:0 0 0 2px rgba(101,63,132,0.2); }
     .calc-cell{ font-size:0.82rem; font-weight:600; color:#c4a0e8; text-align:center; }
     .subsystem-badge { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:0.18rem 0.5rem; border-radius:9999px; }
@@ -23,6 +24,35 @@
     .status-badge-good { background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.35); }
     .status-badge-fail { background:rgba(239,68,68,0.2);  color:#fca5a5; border:1px solid rgba(239,68,68,0.35); }
     .status-badge-warn { background:rgba(245,158,11,0.2); color:#fcd34d; border:1px solid rgba(245,158,11,0.35); }
+
+    .prio-dropdown-menu { 
+      display:none; 
+      position:absolute; 
+      right:0; 
+      top:100%; 
+      margin-top:0.35rem; 
+      width:100%; 
+      min-width:7rem; 
+      background:rgba(36, 17, 52, 0.98); 
+      backdrop-filter:blur(12px); 
+      border:1px solid rgba(215, 210, 203, 0.15); 
+      border-radius:0.75rem; 
+      padding:0.35rem; 
+      z-index:100;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    }
+    .prio-dropdown-menu.active { display:block; }
+    .prio-item { 
+      padding:0.4rem 0.75rem; 
+      font-size:0.85rem; 
+      border-radius:0.5rem; 
+      cursor:pointer; 
+      transition:all 0.2s; 
+      color:rgba(215,210,203,0.7);
+      text-align: left;
+    }
+    .prio-item:hover { background:rgba(255,255,255,0.06); color:white; }
+    .prio-item.selected { background:rgba(101,63,132,0.3); color:#c4a0e8; font-weight:700; }
 
     .step-active { background:#653f84; color:#fff; }
     .step-done   { background:rgba(101,63,132,0.5); }
@@ -181,7 +211,7 @@
           </div>
 
           <!-- Section E: Charts (Larger Layout) -->
-          <div class="grid grid-cols-1 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div class="card p-6 flex flex-col items-center w-full">
                 <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full text-center sm:text-left" id="lbl-subsystem-charts" style="color:rgba(215,210,203,0.4);">⚖️ Cost by Subsystem</p>
                 <div class="w-full h-80 sm:h-96 flex justify-center"><canvas id="chart-subsystem"></canvas></div>
@@ -190,7 +220,7 @@
                 <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full text-center sm:text-left" id="lbl-used-charts" style="color:rgba(215,210,203,0.4);">🎯 Used vs Remaining</p>
                 <div class="w-full h-80 sm:h-96 flex justify-center"><canvas id="chart-used"></canvas></div>
              </div>
-             <div class="card p-6 flex flex-col items-center w-full">
+             <div class="card p-6 flex flex-col items-center w-full md:col-span-2">
                 <p class="text-xs font-bold uppercase tracking-widest mb-6 w-full text-center sm:text-left" id="lbl-top-charts" style="color:rgba(215,210,203,0.4);">📊 Top Components by Cost (AED)</p>
                 <div class="w-full h-80 sm:h-[400px]"><canvas id="chart-top"></canvas></div>
              </div>
@@ -395,14 +425,51 @@
         <td><input type="number" class="field-input px-2" value="${toDisplay(r.cost_per_unit_aed||0).toFixed(2)}" step="0.01" min="0" oninput="liveUpdate(${idx},'cost_per_unit_aed',this.value)"/></td>
         <td><div class="calc-cell" id="tc-${idx}">${formatCost(r.total_cost_aed)}</div></td>
         <td>
-          <select class="field-input !py-[0.35rem]" onchange="liveUpdate(${idx},'priority',this.value)">
-            ${prioOptions}
-          </select>
+          <div class="relative w-[140px] mx-auto">
+            <button onclick="event.stopPropagation(); togglePrio(${idx})" id="prio-btn-${idx}" class="field-input select-input !py-[0.35rem] text-left">
+              ${r.priority || '--'}
+            </button>
+            <div id="prio-menu-${idx}" class="prio-dropdown-menu">
+              ${['Critical','High','Medium','Low'].map(p => `
+                <div class="prio-item ${r.priority===p?'selected':''}" onclick="setPriority(${idx}, '${p}')">${p}</div>
+              `).join('')}
+              <div class="prio-item ${!r.priority?'selected':''}" onclick="setPriority(${idx}, '')">--</div>
+            </div>
+          </div>
         </td>
         <td><input type="text" class="field-input px-2 placeholder-zinc-700" placeholder="e.g. Amazon" value="${r.vendor||''}" oninput="liveUpdate(${idx},'vendor',this.value)"/></td>
         <td><input type="url" class="field-input px-2 placeholder-zinc-700" placeholder="https://" value="${r.purchase_link||''}" oninput="liveUpdate(${idx},'purchase_link',this.value)"/></td>
       </tr>`;
     }).join('');
+  }
+
+  function togglePrio(idx) {
+    // Close others
+    document.querySelectorAll('.prio-dropdown-menu').forEach(m => {
+      if(m.id !== `prio-menu-${idx}`) m.classList.remove('active');
+    });
+    const menu = document.getElementById(`prio-menu-${idx}`);
+    menu.classList.toggle('active');
+
+    if(menu.classList.contains('active')) {
+      const close = (e) => {
+        if (!menu.contains(e.target) && !document.getElementById(`prio-btn-${idx}`).contains(e.target)) {
+          menu.classList.remove('active');
+          document.removeEventListener('click', close);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', close), 10);
+    }
+  }
+
+  function setPriority(idx, val) {
+    rows[idx].priority = val;
+    document.getElementById(`prio-btn-${idx}`).textContent = val || '--';
+    document.getElementById(`prio-menu-${idx}`).classList.remove('active');
+    // Re-render table row or just update button. Let's just update button and call it a day.
+    // However, liveUpdate might need to be called if it was doing other things.
+    // In this file, liveUpdate only updates fields and recalcLocalSummary.
+    recalcLocalSummary();
   }
 
   function liveUpdate(idx, field, rawValue){

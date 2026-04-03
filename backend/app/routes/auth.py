@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
@@ -72,4 +73,18 @@ def get_students(db: Session = Depends(get_db), current_user: User = Depends(get
         raise HTTPException(status_code=403, detail="Admin privileges required")
     students = db.query(User).filter(User.role == "student").order_by(User.created_at.desc()).all()
     return students
+
+@router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_student(student_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    student = db.query(User).filter(User.id == student_id, User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Optional: Delete associated missions or check dependencies
+    # For now, just delete the user
+    db.delete(student)
+    db.commit()
+    return None
 
