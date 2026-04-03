@@ -16,6 +16,7 @@ class User(Base):
     school_name = Column(String, nullable=True)
     grade = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    invitation_code = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     missions = relationship("Mission", back_populates="student", cascade="all, delete-orphan")

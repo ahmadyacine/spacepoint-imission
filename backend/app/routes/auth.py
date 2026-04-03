@@ -34,7 +34,8 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
         hashed_password=hash_password(data.password),
         role="student",
         school_name=data.school_name,
-        grade=data.grade
+        grade=data.grade,
+        invitation_code=data.invitation_code
     )
     db.add(user)
     db.commit()

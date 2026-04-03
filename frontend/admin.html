@@ -211,6 +211,7 @@
                <th>Email</th>
                <th>School Name</th>
                <th>Grade</th>
+               <th>Code Used</th>
                <th>Joined Date</th>
                <th class="text-right pr-6">Actions</th>
              </tr>
@@ -557,6 +558,7 @@
           <td class="text-sm" style="color:rgba(215,210,203,0.7);">${s.email}</td>
           <td class="text-sm">${s.school_name || '–'}</td>
           <td class="text-sm">${s.grade || '–'}</td>
+          <td class="text-sm font-bold text-[#c4a0e8]">${s.invitation_code || '–'}</td>
           <td class="text-sm">${d}</td>
           <td class="text-right pr-6">
             <button onclick="confirmDeleteUser('${s.id}', '${s.full_name}')" class="p-2 rounded-lg hover:bg-red-500/10 text-red-400/60 hover:text-red-400 transition-all" title="Delete Account">
@@ -612,6 +614,7 @@
         "Email": s.email,
         "School Name": s.school_name || '',
         "Grade": s.grade || '',
+        "Invitation Code": s.invitation_code || '',
         "Joined Date": new Date(s.created_at).toLocaleDateString()
       }));
       const ws = XLSX.utils.json_to_sheet(data);

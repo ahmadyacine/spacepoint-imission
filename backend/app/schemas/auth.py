@@ -33,6 +33,7 @@ class UserOut(BaseModel):
     school_name: Optional[str] = None
     grade: Optional[str] = None
     is_active: bool
+    invitation_code: Optional[str] = None
     created_at: datetime
 
     class Config:
