@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
-from app.schemas.auth import UserRegister, UserLogin, TokenResponse, UserOut, UserUpdate
+from app.schemas.auth import UserRegister, UserLogin, TokenResponse, UserOut, UserUpdate, AdminUserUpdate
 from app.utils.auth import hash_password, verify_password, create_access_token
 from app.utils.dependencies import get_current_user
 from typing import List
@@ -74,6 +74,35 @@ def get_students(db: Session = Depends(get_db), current_user: User = Depends(get
         raise HTTPException(status_code=403, detail="Admin privileges required")
     students = db.query(User).filter(User.role == "student").order_by(User.created_at.desc()).all()
     return students
+
+@router.put("/students/{student_id}", response_model=UserOut)
+def update_student(student_id: UUID, data: AdminUserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    student = db.query(User).filter(User.id == student_id, User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    if data.full_name is not None: student.full_name = data.full_name
+    if data.email is not None:
+        # Check if email is already used by someone else
+        existing = db.query(User).filter(User.email == data.email, User.id != student_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        student.email = data.email
+    if data.school_name is not None: student.school_name = data.school_name
+    if data.grade is not None: student.grade = data.grade
+    if data.invitation_code is not None:
+        # Check if code exists
+        code = db.query(InvitationCode).filter(InvitationCode.code == data.invitation_code).first()
+        if not code:
+            raise HTTPException(status_code=400, detail="Invalid invitation code")
+        student.invitation_code = data.invitation_code
+    if data.is_active is not None: student.is_active = data.is_active
+    
+    db.commit()
+    db.refresh(student)
+    return student
 
 @router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_student(student_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

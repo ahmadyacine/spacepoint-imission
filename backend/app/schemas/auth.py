@@ -25,6 +25,14 @@ class UserUpdate(BaseModel):
     school_name: Optional[str] = None
     grade: Optional[str] = None
 
+class AdminUserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    school_name: Optional[str] = None
+    grade: Optional[str] = None
+    invitation_code: Optional[str] = None
+    is_active: Optional[bool] = None
+
 class UserOut(BaseModel):
     id: uuid.UUID
     full_name: str

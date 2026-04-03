@@ -216,6 +216,7 @@
                <th>Grade</th>
                <th>Code Used</th>
                <th>Joined Date</th>
+               <th>Status</th>
                <th class="text-right pr-6">Actions</th>
              </tr>
           </thead>
@@ -296,19 +297,59 @@
     </div>
   </div>
   
-  <!-- Delete User Confirmation Modal -->
-  <div class="overlay" id="delete-user-modal" onclick="closeDeleteUserModal(event)">
+  <!-- DELETE USER MODAL -->
+  <div id="delete-user-modal" class="overlay" onclick="closeDeleteUserModal(event)">
     <div class="modal text-center" onclick="event.stopPropagation()" style="max-width:400px;">
-      <div class="text-4xl mb-4">⚠️</div>
-      <h2 class="text-xl font-bold text-white mb-2">Delete Account?</h2>
-      <p class="text-sm mb-6" style="color:rgba(215,210,203,0.5);">
-        Are you sure you want to delete <span id="delete-user-name" class="font-bold text-white"></span>'s account? 
-        <br><br>
-        <span class="text-red-400 font-bold">This action cannot be undone.</span>
-      </p>
+      <div class="text-3xl mb-4">⚠️</div>
+      <h3 class="text-lg font-bold text-white mb-2">Delete Student Account?</h3>
+      <p class="text-sm opacity-60 mb-6 px-4">Are you sure you want to delete <strong id="delete-user-name" class="text-white"></strong>? All their mission data will be permanently lost.</p>
       <div class="flex gap-3">
-        <button onclick="closeDeleteUserModal()" class="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors hover:bg-white/5" style="border:1px solid rgba(215,210,203,0.15);color:rgba(215,210,203,0.6);">Cancel</button>
-        <button id="btn-confirm-delete-user" class="flex-1 py-3 rounded-xl text-sm font-semibold bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 transition-all">Delete Account</button>
+        <button onclick="closeDeleteUserModal()" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-white/5 text-gray-400 hover:text-white transition-all" style="border:1px solid rgba(215,210,203,0.1);">Cancel</button>
+        <button id="btn-confirm-delete-user" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/20">Delete Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT STUDENT MODAL -->
+  <div id="edit-student-modal" class="overlay" onclick="closeEditStudentModal(event)">
+    <div class="modal p-0 overflow-hidden" onclick="event.stopPropagation()" style="max-width:520px; background:#1a0c27;">
+      <div class="px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+        <h3 class="text-lg font-bold text-white">Edit Student Info</h3>
+        <p class="text-xs mt-1" style="color:rgba(215,210,203,0.45);">Administrative profile update.</p>
+      </div>
+
+      <div class="px-8 py-8 space-y-5">
+        <div>
+          <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
+          <input type="text" id="edit-student-name" class="input-field" placeholder="John Doe" />
+        </div>
+        <div>
+          <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Email Address</label>
+          <input type="email" id="edit-student-email" class="input-field" placeholder="john@example.com" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">School Name</label>
+            <input type="text" id="edit-student-school" class="input-field" placeholder="Space Academy" />
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Grade</label>
+            <input type="text" id="edit-student-grade" class="input-field" placeholder="Grade 10" />
+          </div>
+        </div>
+        <div>
+          <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Invitation Code (Batch)</label>
+          <input type="text" id="edit-student-code" class="input-field" placeholder="DXB-SCHOOL" />
+        </div>
+        <div class="flex items-center gap-3 pt-2">
+            <input type="checkbox" id="edit-student-active" class="w-4 h-4 rounded bg-white/10 border-white/20 accent-secondary" />
+            <label for="edit-student-active" class="text-xs font-semibold" style="color:rgba(215,210,203,0.5);">Account is active and allowed to login</label>
+        </div>
+      </div>
+
+      <div class="px-8 py-6 flex items-center justify-end gap-3" style="background:rgba(255,255,255,0.02);">
+        <button onclick="closeEditStudentModal()" class="px-5 py-2 text-xs font-bold text-gray-400 hover:text-white transition-all">Cancel</button>
+        <button id="btn-save-student-edit" class="btn-primary px-8">Save Changes</button>
       </div>
     </div>
   </div>
@@ -598,10 +639,20 @@
           <td class="text-sm">${s.grade || '–'}</td>
           <td class="text-sm font-bold text-[#c4a0e8]">${s.invitation_code || '–'}</td>
           <td class="text-sm">${d}</td>
+          <td class="text-sm">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.is_active ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-100 border border-red-500/20' }">
+              ${s.is_active ? 'ACTIVE' : 'INACTIVE'}
+            </span>
+          </td>
           <td class="text-right pr-6">
-            <button onclick="confirmDeleteUser('${s.id}', '${s.full_name}')" class="p-2 rounded-lg hover:bg-red-500/10 text-red-400/60 hover:text-red-400 transition-all" title="Delete Account">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            </button>
+            <div class="flex justify-end gap-1">
+              <button onclick="openEditStudentModal('${s.id}')" class="p-2 rounded-lg hover:bg-white/5 text-gray-400/60 hover:text-white transition-all" title="Edit Info">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              </button>
+              <button onclick="confirmDeleteUser('${s.id}', '${s.full_name}')" class="p-2 rounded-lg hover:bg-red-500/10 text-red-400/60 hover:text-red-400 transition-all" title="Delete Account">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </button>
+            </div>
           </td>
         </tr>
       `}).join('');
@@ -620,6 +671,62 @@
       if (e && e.target !== document.getElementById('delete-user-modal')) return;
       document.getElementById('delete-user-modal').classList.remove('open');
       studentToDelete = null;
+    }
+
+    let studentEditing = null;
+    function openEditStudentModal(id) {
+       const user = allStudents.find(s => s.id === id);
+       if(!user) return;
+       studentEditing = id;
+       
+       document.getElementById('edit-student-name').value = user.full_name;
+       document.getElementById('edit-student-email').value = user.email;
+       document.getElementById('edit-student-school').value = user.school_name || '';
+       document.getElementById('edit-student-grade').value = user.grade || '';
+       document.getElementById('edit-student-code').value = user.invitation_code || '';
+       document.getElementById('edit-student-active').checked = user.is_active;
+
+       const modal = document.getElementById('edit-student-modal');
+       modal.classList.add('open');
+       document.getElementById('btn-save-student-edit').onclick = () => saveStudentEdit(id);
+    }
+
+    function closeEditStudentModal(e) {
+      if (e && e.target !== document.getElementById('edit-student-modal')) return;
+      document.getElementById('edit-student-modal').classList.remove('open');
+      studentEditing = null;
+    }
+
+    async function saveStudentEdit(id) {
+      const btn = document.getElementById('btn-save-student-edit');
+      const payload = {
+        full_name: document.getElementById('edit-student-name').value,
+        email: document.getElementById('edit-student-email').value,
+        school_name: document.getElementById('edit-student-school').value,
+        grade: document.getElementById('edit-student-grade').value,
+        invitation_code: document.getElementById('edit-student-code').value,
+        is_active: document.getElementById('edit-student-active').checked
+      };
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        const res = await fetch(`${API}/auth/students/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw await res.json();
+        
+        closeEditStudentModal();
+        showMsg('Student record updated.', false);
+        loadStudents();
+      } catch (e) {
+        showMsg(e.detail || 'Failed to update student');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+      }
     }
 
     async function deleteStudentAccount(id) {
