@@ -216,7 +216,9 @@
 
   // ── Page Access Guard ────────────────────────────────────────────────────────
   (async () => {
-    const r = await fetch(`${API}/page-access/check/power-budget`);
+    const r = await fetch(`${API}/page-access/check/power-budget`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     const d = await r.json();
     if (!d.is_unlocked) {
       document.body.innerHTML = `

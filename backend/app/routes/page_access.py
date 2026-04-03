@@ -28,17 +28,21 @@ def require_admin(user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin privileges required")
     return user
 
-def seed_defaults(db: Session):
-    """Ensure all lockable pages have a row in the DB."""
+def seed_defaults(db: Session, code: str):
+    """Ensure all lockable pages have a row in the DB for this invitation code."""
     for p in LOCKABLE_PAGES:
-        existing = db.query(PageAccess).filter(PageAccess.page_key == p["key"]).first()
+        existing = db.query(PageAccess).filter(
+            PageAccess.page_key == p["key"],
+            PageAccess.invitation_code == code
+        ).first()
         if not existing:
-            db.add(PageAccess(page_key=p["key"], label=p["label"], is_unlocked=False))
+            db.add(PageAccess(page_key=p["key"], invitation_code=code, label=p["label"], is_unlocked=False))
     db.commit()
 
 
 class PageAccessOut(BaseModel):
     page_key: str
+    invitation_code: str
     label: str
     is_unlocked: bool
 
@@ -47,29 +51,46 @@ class PageAccessOut(BaseModel):
 
 
 class PageAccessUpdate(BaseModel):
+    invitation_code: str
     is_unlocked: bool
 
 
-# ── Public endpoint: check if a specific page is accessible ───────────────────
+# ── Student endpoint: check access based on their registered code ─────────────
 @router.get("/check/{page_key}")
-def check_page_access(page_key: str, db: Session = Depends(get_db)):
-    """Used by student pages to check if they are allowed to load."""
+def check_page_access(
+    page_key: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Used by student pages to check if they are allowed to load based on their code."""
     if page_key in ALWAYS_OPEN:
         return {"is_unlocked": True}
-    seed_defaults(db)
-    row = db.query(PageAccess).filter(PageAccess.page_key == page_key).first()
+    
+    code = current_user.invitation_code
+    if not code:
+        return {"is_unlocked": False}
+
+    seed_defaults(db, code)
+    row = db.query(PageAccess).filter(
+        PageAccess.page_key == page_key,
+        PageAccess.invitation_code == code
+    ).first()
     return {"is_unlocked": row.is_unlocked if row else False}
 
 
-# ── Admin: list all pages ─────────────────────────────────────────────────────
+# ── Admin: list all pages for a specific code ─────────────────────────────────
 @router.get("", response_model=List[PageAccessOut])
-def list_pages(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
-    seed_defaults(db)
-    pages = db.query(PageAccess).all()
+def list_pages(
+    code: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    seed_defaults(db, code)
+    pages = db.query(PageAccess).filter(PageAccess.invitation_code == code).all()
     return pages
 
 
-# ── Admin: toggle a specific page ─────────────────────────────────────────────
+# ── Admin: toggle a specific page for a specific code ─────────────────────────
 @router.put("/{page_key}", response_model=PageAccessOut)
 def update_page_access(
     page_key: str,
@@ -78,11 +99,17 @@ def update_page_access(
     admin: User = Depends(require_admin)
 ):
     if page_key in ALWAYS_OPEN:
-        raise HTTPException(status_code=400, detail="This page is always accessible and cannot be locked.")
-    seed_defaults(db)
-    row = db.query(PageAccess).filter(PageAccess.page_key == page_key).first()
+        raise HTTPException(status_code=400, detail="This page is always accessible.")
+    
+    seed_defaults(db, data.invitation_code)
+    row = db.query(PageAccess).filter(
+        PageAccess.page_key == page_key,
+        PageAccess.invitation_code == data.invitation_code
+    ).first()
+    
     if not row:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise HTTPException(status_code=404, detail="Page entry not found")
+        
     row.is_unlocked = data.is_unlocked
     db.commit()
     db.refresh(row)

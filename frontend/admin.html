@@ -195,9 +195,12 @@
           <h1 class="text-xl font-bold text-white">Registered Students</h1>
           <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">View and export all student accounts on the platform.</p>
         </div>
-        <div class="flex items-center gap-3">
-          <button onclick="exportStudents()" class="btn-edit w-full sm:w-auto whitespace-nowrap" style="color:#6ee7b7;border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);">📥 Export Excel</button>
-        </div>
+         <div class="flex flex-col sm:flex-row items-center gap-3">
+           <select id="student-code-filter" onchange="renderStudents()" class="input-field w-full sm:w-[180px] !py-[0.5rem] text-xs">
+             <option value="">All invitation codes</option>
+           </select>
+           <button onclick="exportStudents()" class="btn-edit w-full sm:w-auto whitespace-nowrap" style="color:#6ee7b7;border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);">📥 Export Excel</button>
+         </div>
       </div>
     </div>
     
@@ -229,9 +232,17 @@
   <!-- PAGE ACCESS VIEW -->
   <div id="view-pages" class="admin-view hidden">
     <div class="px-4 sm:px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
-      <div class="max-w-7xl mx-auto">
-        <h1 class="text-xl font-bold text-white">Page Access Control</h1>
-        <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Control which mission phases students can access. Mission, Components, and CONOPS are always open.</p>
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-bold text-white">Page Access Control</h1>
+          <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Control which mission phases students can access per invitation code.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-xs font-bold text-gray-500 uppercase shrink-0">Select Batch:</label>
+          <select id="pages-code-filter" onchange="loadPageAccess()" class="input-field w-full sm:w-[200px] !py-[0.5rem] text-xs">
+            <option value="">Choose a Code…</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -436,7 +447,18 @@
       currentTab = tab;
       if (tab === 'codes') loadCodes();
       if (tab === 'students') loadStudents();
-      if (tab === 'pages') loadPageAccess();
+      if (tab === 'pages') {
+        const pagesFilter = document.getElementById('pages-code-filter');
+        // Populate pages-code-filter from invitation codes if not already loaded
+        if (allCodes.length === 0) {
+           loadCodes().then(() => {
+             pagesFilter.innerHTML = '<option value="">Choose a Code…</option>' + allCodes.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
+           });
+        } else {
+           pagesFilter.innerHTML = '<option value="">Choose a Code…</option>' + allCodes.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
+        }
+        loadPageAccess(); 
+      }
     }
 
     // ── Invitation Codes ──────────────────────────────────────────────────────
@@ -542,15 +564,31 @@
     async function loadStudents() {
       const res = await fetch(`${API}/auth/students`, { headers: { Authorization:`Bearer ${token}` } });
       allStudents = await res.json();
+      
+      // Update filter options
+      const filter = document.getElementById('student-code-filter');
+      const codes = [...new Set(allStudents.map(s => s.invitation_code).filter(Boolean))].sort();
+      filter.innerHTML = '<option value="">All invitation codes</option>' + codes.map(c => `<option value="${c}">${c}</option>`).join('');
+      
       renderStudents();
     }
     
     function renderStudents() {
       const tbody = document.getElementById('students-tbody');
       const empty = document.getElementById('students-empty');
-      if (!allStudents.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+      const codeFilter = document.getElementById('student-code-filter').value;
+      
+      let filtered = allStudents;
+      if(codeFilter) filtered = allStudents.filter(s => s.invitation_code === codeFilter);
+
+      if (!filtered.length) { 
+        tbody.innerHTML=''; 
+        empty.classList.remove('hidden'); 
+        empty.innerHTML = `<p class="text-sm">${codeFilter ? 'No students found with this invitation code.' : 'No students registered yet.'}</p>`;
+        return; 
+      }
       empty.classList.add('hidden');
-      tbody.innerHTML = allStudents.map(s => {
+      tbody.innerHTML = filtered.map(s => {
         const d = new Date(s.created_at).toLocaleDateString();
         return `
         <tr class="hover:bg-white/[0.02] transition-colors">
@@ -631,13 +669,21 @@
     let allPages = [];
 
     async function loadPageAccess() {
-      const res = await fetch(`${API}/page-access`, { headers: { Authorization:`Bearer ${token}` } });
+      const code = document.getElementById('pages-code-filter').value;
+      const grid = document.getElementById('pages-grid');
+      if(!code) {
+        grid.innerHTML = '<div class="col-span-full py-12 text-center opacity-40"><p class="text-sm">Please select an invitation code (Batch) above to manage page access.</p></div>';
+        return;
+      }
+
+      const res = await fetch(`${API}/page-access?code=${code}`, { headers: { Authorization:`Bearer ${token}` } });
       allPages = await res.json();
       renderPages();
     }
 
     function renderPages() {
       const grid = document.getElementById('pages-grid');
+      const code = document.getElementById('pages-code-filter').value;
       if (!allPages.length) { grid.innerHTML = '<p class="text-sm" style="color:rgba(215,210,203,0.3);">No lockable pages found.</p>'; return; }
       grid.innerHTML = allPages.map(p => {
         const icon = PAGE_ICONS[p.page_key] || '📄';
@@ -657,28 +703,30 @@
             </span>
           </div>
           <p class="text-xs" style="color:rgba(215,210,203,0.5);">
-            ${unlocked ? 'Students can currently access this page.' : 'Students see a locked screen when they try to visit this page.'}
+            ${unlocked ? 'Students in this batch can currently access this page.' : 'Students in this batch see a locked screen when they try to visit this page.'}
           </p>
           <button onclick="togglePage('${p.page_key}', ${!unlocked})"
             class="w-full py-2 rounded-xl text-xs font-bold transition-all"
             style="background:${unlocked ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'};border:1px solid ${unlocked ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'};color:${unlocked ? '#fca5a5' : '#6ee7b7'};">
-            ${unlocked ? '🔒 Lock this page' : '🔓 Unlock this page'}
+            ${unlocked ? '🔒 Lock for this batch' : '🔓 Unlock for this batch'}
           </button>
         </div>`;
       }).join('');
     }
 
     async function togglePage(pageKey, newState) {
+      const code = document.getElementById('pages-code-filter').value;
+      if (!code) return showMsg('Please select a batch first');
       try {
         const res = await fetch(`${API}/page-access/${pageKey}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ is_unlocked: newState })
+          body: JSON.stringify({ invitation_code: code, is_unlocked: newState })
         });
-        if (!res.ok) throw new Error('Failed to update');
+        if (!res.ok) throw await res.json();
         await loadPageAccess();
-        showMsg(`${pageKey} is now ${newState ? 'unlocked' : 'locked'}.`, false);
-      } catch (e) { showMsg(e.message); }
+        showMsg(`${pageKey} is now ${newState ? 'unlocked' : 'locked'} for batch ${code}.`, false);
+      } catch (e) { showMsg(e.detail || e.message); }
     }
 
     let allComponents = [];

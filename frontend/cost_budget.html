@@ -247,7 +247,9 @@
 
   // ── Page Access Guard ────────────────────────────────────────────────────────
   (async () => {
-    const r = await fetch(`${API_URL}/page-access/check/cost-budget`);
+    const r = await fetch(`${API_URL}/page-access/check/cost-budget`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     const d = await r.json();
     if (!d.is_unlocked) {
       document.body.innerHTML = `
