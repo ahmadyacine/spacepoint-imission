@@ -295,6 +295,13 @@
             </div>
             <p class="text-xs leading-relaxed" style="color:rgba(215,210,203,0.55);">${(c.scaled_description || '').slice(0,120)}${(c.scaled_description||'').length>120?'…':''}</p>
 
+            ${c.datasheet_url ? `
+            <a href="${c.datasheet_url}" target="_blank" class="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all hover:bg-secondary/30" style="background:rgba(101,63,132,0.15); border:1.5px solid rgba(101,63,132,0.3); color:#c4a0e8;">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              View Datasheet
+            </a>
+            ` : ''}
+
             <!-- Specs grid -->
             <div class="grid grid-cols-3 gap-2 text-xs">
               <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,0.04);">

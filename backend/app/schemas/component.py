@@ -21,6 +21,7 @@ class ComponentCreate(BaseModel):
     is_active: Optional[bool] = True
     notes: Optional[str] = None
     component_code: Optional[str] = None
+    datasheet_url: Optional[str] = None
 
 class ComponentUpdate(BaseModel):
     component_name: Optional[str] = None
@@ -40,6 +41,7 @@ class ComponentUpdate(BaseModel):
     is_active: Optional[bool] = None
     notes: Optional[str] = None
     component_code: Optional[str] = None
+    datasheet_url: Optional[str] = None
 
 class ComponentOut(BaseModel):
     id: uuid.UUID
@@ -60,6 +62,7 @@ class ComponentOut(BaseModel):
     is_active: bool
     notes: Optional[str]
     component_code: Optional[str]
+    datasheet_url: Optional[str]
     created_at: datetime
     updated_at: datetime
 

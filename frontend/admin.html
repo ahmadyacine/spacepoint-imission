@@ -67,6 +67,7 @@
       <button id="tab-components" onclick="switchAdminTab('components')" class="py-4 text-sm font-semibold border-b-2 text-white border-secondary transition-colors whitespace-nowrap">Components</button>
       <button id="tab-codes" onclick="switchAdminTab('codes')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">Invitation Codes</button>
       <button id="tab-students" onclick="switchAdminTab('students')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">Registered Students</button>
+      <button id="tab-missions" onclick="switchAdminTab('missions')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🚀 Student Missions</button>
       <button id="tab-pages" onclick="switchAdminTab('pages')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🔐 Page Access</button>
     </div>
   </div>
@@ -227,6 +228,52 @@
           <p class="text-sm">No students registered yet.</p>
         </div>
       </div>
+      <div id="students-pagination" class="flex justify-between items-center px-6 py-4 border-t hidden mt-[-1px]" style="border-color:rgba(215,210,203,0.05);background:rgba(30,16,48,0.3); border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem; border-left:1.5px solid rgba(215,210,203,0.09); border-right:1.5px solid rgba(215,210,203,0.09); border-bottom:1.5px solid rgba(215,210,203,0.09);"></div>
+    </div>
+  </div>
+
+  <!-- STUDENT MISSIONS OVERVIEW VIEW -->
+  <div id="view-missions" class="admin-view hidden">
+    <div class="px-4 sm:px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-white">Student Missions</h1>
+          <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Overview of mission progress for all students.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center gap-3">
+          <select id="mission-code-filter" onchange="missionsCurrentPage=1;renderStudentMissions()" class="input-field w-full sm:w-[180px] !py-[0.5rem] text-xs">
+            <option value="">All invitation codes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="max-w-7xl mx-auto px-4 sm:px-8 py-8 pb-12">
+      <div class="rounded-2xl overflow-hidden" style="border:1.5px solid rgba(215,210,203,0.09);">
+        <div class="overflow-x-auto">
+        <table class="w-full text-left" style="border-collapse:collapse; min-width:800px;">
+          <thead style="background:rgba(36,17,52,0.8);">
+            <tr>
+               <th>Student</th>
+               <th>School Details</th>
+               <th>Mission Name</th>
+               <th class="text-center">Components</th>
+               <th class="text-center">CONOPS</th>
+               <th class="text-center">Data</th>
+               <th class="text-center">Power</th>
+               <th class="text-center">Link</th>
+               <th class="text-center">Mass</th>
+               <th class="text-center">Cost</th>
+             </tr>
+          </thead>
+          <tbody id="missions-tbody" style="background:rgba(30,16,48,0.6);"></tbody>
+        </table>
+        </div>
+        <div id="missions-empty" class="hidden text-center py-12" style="color:rgba(215,210,203,0.3);">
+          <p class="text-sm">No missions have been created by students yet.</p>
+        </div>
+      </div>
+      <div id="missions-pagination" class="flex justify-between items-center px-6 py-4 border-t hidden mt-[-1px]" style="border-color:rgba(215,210,203,0.05);background:rgba(30,16,48,0.3); border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem; border-left:1.5px solid rgba(215,210,203,0.09); border-right:1.5px solid rgba(215,210,203,0.09); border-bottom:1.5px solid rgba(215,210,203,0.09);"></div>
     </div>
   </div>
 
@@ -306,6 +353,19 @@
       <div class="flex gap-3">
         <button onclick="closeDeleteUserModal()" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-white/5 text-gray-400 hover:text-white transition-all" style="border:1px solid rgba(215,210,203,0.1);">Cancel</button>
         <button id="btn-confirm-delete-user" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/20">Delete Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE COMPONENT MODAL -->
+  <div id="delete-comp-modal" class="overlay" onclick="closeDeleteCompModal(event)">
+    <div class="modal text-center" onclick="event.stopPropagation()" style="max-width:400px;">
+      <div class="text-3xl mb-4">⚠️</div>
+      <h3 class="text-lg font-bold text-white mb-2">Delete Component?</h3>
+      <p class="text-sm opacity-60 mb-6 px-4">Are you sure you want to delete <strong id="delete-comp-name" class="text-white"></strong>? This will remove it from all student missions.</p>
+      <div class="flex gap-3">
+        <button onclick="closeDeleteCompModal()" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-white/5 text-gray-400 hover:text-white transition-all" style="border:1px solid rgba(215,210,203,0.1);">Cancel</button>
+        <button id="btn-confirm-delete-comp" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/20">Delete Forever</button>
       </div>
     </div>
   </div>
@@ -442,6 +502,10 @@
             <input type="url" id="f-image" class="input-field" placeholder="https://…/image.png" />
           </div>
           <div class="sm:col-span-2">
+            <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Datasheet URL (Google Drive)</label>
+            <input type="url" id="f-datasheet" class="input-field" placeholder="https://drive.google.com/…" />
+          </div>
+          <div class="sm:col-span-2">
             <label class="field-label block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:rgba(215,210,203,0.5);">Notes</label>
             <textarea id="f-notes" rows="2" class="input-field resize-none" placeholder="Internal admin notes…"></textarea>
           </div>
@@ -466,7 +530,7 @@
 
     // ── Tab Management ────────────────────────────────────────────────────────
     let currentTab = 'components';
-    const ALL_TABS = ['components', 'codes', 'students', 'pages'];
+    const ALL_TABS = ['components', 'codes', 'students', 'missions', 'pages'];
     function switchAdminTab(tab) {
       ALL_TABS.forEach(t => {
         const view = document.getElementById('view-' + t);
@@ -488,6 +552,7 @@
       currentTab = tab;
       if (tab === 'codes') loadCodes();
       if (tab === 'students') loadStudents();
+      if (tab === 'missions') loadStudentMissions();
       if (tab === 'pages') {
         const pagesFilter = document.getElementById('pages-code-filter');
         // Populate pages-code-filter from invitation codes if not already loaded
@@ -500,6 +565,26 @@
         }
         loadPageAccess(); 
       }
+    }
+
+    // ── Pagination Helper ───────────────────────────────────────────────────
+    function renderPaginationControls(containerId, currentPage, totalElements, perPage, onChangeFnStr) {
+      const container = document.getElementById(containerId);
+      if (!totalElements || totalElements <= perPage) {
+         container.innerHTML = '';
+         container.classList.add('hidden');
+         return;
+      }
+      container.classList.remove('hidden');
+      const totalPages = Math.ceil(totalElements / perPage);
+      
+      let html = `<div class="text-xs" style="color:rgba(215,210,203,0.5);">Showing ${(currentPage-1)*perPage + 1} to ${Math.min(currentPage*perPage, totalElements)} of ${totalElements}</div>
+                  <div class="flex items-center gap-1">
+                    <button class="px-2.5 py-1 text-xs rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5" style="border:1px solid rgba(215,210,203,0.1);color:rgba(215,210,203,0.7);" ${currentPage <= 1 ? 'disabled' : ''} onclick="${onChangeFnStr}(${currentPage - 1})">Prev</button>
+                    <span class="text-xs px-2 font-semibold text-white">Pg ${currentPage} of ${totalPages}</span>
+                    <button class="px-2.5 py-1 text-xs rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5" style="border:1px solid rgba(215,210,203,0.1);color:rgba(215,210,203,0.7);" ${currentPage >= totalPages ? 'disabled' : ''} onclick="${onChangeFnStr}(${currentPage + 1})">Next</button>
+                  </div>`;
+      container.innerHTML = html;
     }
 
     // ── Invitation Codes ──────────────────────────────────────────────────────
@@ -602,34 +687,56 @@
 
     // ── Students ──────────────────────────────────────────────────────────────
     let allStudents = [];
+    let studentsCurrentPage = 1;
+    const STUDENTS_PER_PAGE = 15;
+
     async function loadStudents() {
       const res = await fetch(`${API}/auth/students`, { headers: { Authorization:`Bearer ${token}` } });
       allStudents = await res.json();
       
-      // Update filter options
       const filter = document.getElementById('student-code-filter');
       const codes = [...new Set(allStudents.map(s => s.invitation_code).filter(Boolean))].sort();
       filter.innerHTML = '<option value="">All invitation codes</option>' + codes.map(c => `<option value="${c}">${c}</option>`).join('');
       
+      studentsCurrentPage = 1;
       renderStudents();
     }
     
+    function setStudentsPage(p) {
+      studentsCurrentPage = p;
+      renderStudents();
+    }
+
     function renderStudents() {
       const tbody = document.getElementById('students-tbody');
       const empty = document.getElementById('students-empty');
+      const container = document.getElementById('students-pagination');
       const codeFilter = document.getElementById('student-code-filter').value;
       
       let filtered = allStudents;
-      if(codeFilter) filtered = allStudents.filter(s => s.invitation_code === codeFilter);
+      if(codeFilter) {
+        filtered = allStudents.filter(s => s.invitation_code === codeFilter);
+        // Reset page if filtering outside boundary (handled implicitly if we just enforce bounds)
+      }
 
       if (!filtered.length) { 
         tbody.innerHTML=''; 
         empty.classList.remove('hidden'); 
+        container.classList.add('hidden');
         empty.innerHTML = `<p class="text-sm">${codeFilter ? 'No students found with this invitation code.' : 'No students registered yet.'}</p>`;
         return; 
       }
       empty.classList.add('hidden');
-      tbody.innerHTML = filtered.map(s => {
+
+      const totalPages = Math.ceil(filtered.length / STUDENTS_PER_PAGE);
+      if(studentsCurrentPage > totalPages) studentsCurrentPage = totalPages || 1;
+      
+      renderPaginationControls('students-pagination', studentsCurrentPage, filtered.length, STUDENTS_PER_PAGE, 'setStudentsPage');
+
+      const startObj = (studentsCurrentPage - 1) * STUDENTS_PER_PAGE;
+      const paged = filtered.slice(startObj, startObj + STUDENTS_PER_PAGE);
+
+      tbody.innerHTML = paged.map(s => {
         const d = new Date(s.created_at).toLocaleDateString();
         return `
         <tr class="hover:bg-white/[0.02] transition-colors">
@@ -766,6 +873,86 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Students");
       XLSX.writeFile(wb, "SpacePoint_Students.xlsx");
+    }
+
+    // ── Student Missions ──────────────────────────────────────────────────────
+    let allStudentMissions = [];
+    let missionsCurrentPage = 1;
+    const MISSIONS_PER_PAGE = 15;
+
+    async function loadStudentMissions() {
+      try {
+        const res = await fetch(`${API}/missions/admin/overview`, { headers: { Authorization:`Bearer ${token}` } });
+        allStudentMissions = await res.json();
+        
+        const filter = document.getElementById('mission-code-filter');
+        const codes = [...new Set(allStudentMissions.map(m => m.invitation_code).filter(Boolean))].sort();
+        filter.innerHTML = '<option value="">All invitation codes</option>' + codes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+        missionsCurrentPage = 1;
+        renderStudentMissions();
+      } catch (e) {
+        showMsg("Failed to load student missions overview", true);
+      }
+    }
+    
+    function setMissionsPage(p) {
+      missionsCurrentPage = p;
+      renderStudentMissions();
+    }
+
+    function renderStudentMissions() {
+      const tbody = document.getElementById('missions-tbody');
+      const empty = document.getElementById('missions-empty');
+      const container = document.getElementById('missions-pagination');
+      const codeFilter = document.getElementById('mission-code-filter').value;
+
+      let filtered = allStudentMissions;
+      if(codeFilter) {
+        filtered = allStudentMissions.filter(m => m.invitation_code === codeFilter);
+      }
+
+      if (!filtered.length) { 
+        tbody.innerHTML=''; 
+        empty.classList.remove('hidden'); 
+        container.classList.add('hidden');
+        empty.innerHTML = `<p class="text-sm">${codeFilter ? 'No student missions found for this code.' : 'No missions have been created by students yet.'}</p>`;
+        return; 
+      }
+      empty.classList.add('hidden');
+      
+      const totalPages = Math.ceil(filtered.length / MISSIONS_PER_PAGE);
+      if(missionsCurrentPage > totalPages) missionsCurrentPage = totalPages || 1;
+      
+      renderPaginationControls('missions-pagination', missionsCurrentPage, filtered.length, MISSIONS_PER_PAGE, 'setMissionsPage');
+
+      const startObj = (missionsCurrentPage - 1) * MISSIONS_PER_PAGE;
+      const paged = filtered.slice(startObj, startObj + MISSIONS_PER_PAGE);
+      
+      const dot = (completed) => completed 
+        ? '<div class="w-3 h-3 rounded-full mx-auto" style="background:#6ee7b7;box-shadow:0 0 8px rgba(16,185,129,0.4);" title="Completed"></div>'
+        : '<div class="w-3 h-3 rounded-full mx-auto" style="background:rgba(215,210,203,0.1);" title="Not Started"></div>';
+
+      tbody.innerHTML = paged.map(m => `
+        <tr class="hover:bg-white/[0.05] transition-colors cursor-pointer" onclick="window.open('/dashboard?mission_id=${m.mission_id}', '_blank')" title="Click to view mission dashboard">
+          <td>
+            <div class="font-semibold text-white">${m.student_name}</div>
+            <div class="text-xs mt-0.5" style="color:rgba(215,210,203,0.5);">${new Date(m.created_at).toLocaleDateString()}</div>
+          </td>
+          <td>
+            <div class="text-sm">${m.school_name || '–'} <span style="opacity:0.6;">(${m.grade || '–'})</span></div>
+            <div class="text-[10px] font-bold text-[#c4a0e8] uppercase mt-0.5">${m.invitation_code || '–'}</div>
+          </td>
+          <td class="text-sm font-bold text-white border-r" style="border-color:rgba(215,210,203,0.05);">${m.mission_name}</td>
+          <td class="text-center">${dot(m.progress.components)}</td>
+          <td class="text-center">${dot(m.progress.conops)}</td>
+          <td class="text-center">${dot(m.progress.data_budget)}</td>
+          <td class="text-center">${dot(m.progress.power_budget)}</td>
+          <td class="text-center">${dot(m.progress.link_budget)}</td>
+          <td class="text-center">${dot(m.progress.mass_budget)}</td>
+          <td class="text-center">${dot(m.progress.cost_budget)}</td>
+        </tr>
+      `).join('');
     }
 
     // ── Page Access ───────────────────────────────────────────────────────────
@@ -920,7 +1107,7 @@
           <td>
             <div class="flex gap-2">
               <button class="btn-edit" onclick="openEditModal(${JSON.stringify(c).replace(/"/g,'&quot;')})">Edit</button>
-              <button class="btn-danger" onclick="deleteComponent('${c.id}', '${c.component_name}')">Delete</button>
+              <button class="btn-danger" onclick="openDeleteCompModal('${c.id}', '${c.component_name}')">Delete</button>
             </div>
           </td>
         </tr>`;
@@ -960,6 +1147,7 @@
       document.getElementById('f-active').value = comp.is_active ? 'true' : 'false';
       document.getElementById('f-specs').value = comp.key_specs || '';
       document.getElementById('f-image').value = comp.image_url || '';
+      document.getElementById('f-datasheet').value = comp.datasheet_url || '';
       document.getElementById('f-notes').value = comp.notes || '';
       document.getElementById('form-err').classList.add('hidden');
       document.getElementById('modal-overlay').classList.add('open');
@@ -996,6 +1184,7 @@
         is_active: document.getElementById('f-active').value === 'true',
         key_specs: document.getElementById('f-specs').value.trim() || null,
         image_url: document.getElementById('f-image').value.trim() || null,
+        datasheet_url: document.getElementById('f-datasheet').value.trim() || null,
         notes: document.getElementById('f-notes').value.trim() || null,
       };
 
@@ -1027,17 +1216,36 @@
     }
 
     // ── Delete ────────────────────────────────────────────────────────────────
-    async function deleteComponent(id, name) {
-      if (!confirm(`Delete "${name}"? This will also remove it from all student missions.`)) return;
+    function openDeleteCompModal(id, name) {
+       document.getElementById('delete-comp-name').textContent = name;
+       document.getElementById('delete-comp-modal').classList.add('open');
+       document.getElementById('btn-confirm-delete-comp').onclick = () => confirmDeleteComponent(id, name);
+    }
+
+    function closeDeleteCompModal(e) {
+      if (e && e.target !== document.getElementById('delete-comp-modal')) return;
+      document.getElementById('delete-comp-modal').classList.remove('open');
+    }
+
+    async function confirmDeleteComponent(id, name) {
+      const btn = document.getElementById('btn-confirm-delete-comp');
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
       try {
         const res = await fetch(`${API}/components/${id}`, {
           method: 'DELETE',
           headers: { Authorization:`Bearer ${token}` }
         });
         if (!res.ok && res.status !== 204) throw new Error('Delete failed');
+        closeDeleteCompModal();
         showMsg(`"${name}" deleted.`, false);
         await loadComponents();
-      } catch (err) { showMsg(err.message); }
+      } catch (err) { 
+        showMsg(err.message); 
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Delete Forever';
+      }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

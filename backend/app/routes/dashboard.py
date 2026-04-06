@@ -30,8 +30,11 @@ router = APIRouter(prefix="/missions", tags=["Dashboard"])
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _get_mission_or_404(mission_id: uuid.UUID, student_id: uuid.UUID, db: Session) -> Mission:
-    m = db.query(Mission).filter(Mission.id == mission_id, Mission.student_id == student_id).first()
+def _get_mission_or_404(mission_id: uuid.UUID, current_user: User, db: Session) -> Mission:
+    q = db.query(Mission).filter(Mission.id == mission_id)
+    if current_user.role != "admin":
+        q = q.filter(Mission.student_id == current_user.id)
+    m = q.first()
     if not m:
         raise HTTPException(status_code=404, detail="Mission not found")
     return m
@@ -276,7 +279,7 @@ def get_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    mission = _get_mission_or_404(mission_id, current_user.id, db)
+    mission = _get_mission_or_404(mission_id, current_user, db)
     constraint = _ensure_constraint(mission, db)
     mc_list = db.query(MissionComponent).filter(MissionComponent.mission_id == mission_id).all()
     modes = db.query(MissionMode).filter(MissionMode.mission_id == mission_id).order_by(MissionMode.display_order).all()

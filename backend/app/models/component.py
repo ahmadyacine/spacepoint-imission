@@ -26,7 +26,8 @@ class Component(Base):
     is_active = Column(Boolean, default=True)
     notes = Column(Text, nullable=True)
     component_code = Column(String, nullable=True)
+    datasheet_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    mission_links = relationship("MissionComponent", back_populates="component")
+    mission_links = relationship("MissionComponent", back_populates="component", cascade="all, delete-orphan")

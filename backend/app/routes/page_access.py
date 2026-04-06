@@ -63,7 +63,7 @@ def check_page_access(
     current_user: User = Depends(get_current_user)
 ):
     """Used by student pages to check if they are allowed to load based on their code."""
-    if page_key in ALWAYS_OPEN:
+    if page_key in ALWAYS_OPEN or current_user.role == "admin":
         return {"is_unlocked": True}
     
     code = current_user.invitation_code

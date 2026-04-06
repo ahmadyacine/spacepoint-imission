@@ -298,19 +298,25 @@
   let constraints = null;
   
   let selectedCurrency = 'AED';
-  let currencyRates = { 'AED': 3.67, 'USD': 1.0 };
-  const usdToAedFixed = 3.67;
+  let currencyRates = { 
+    'AED': 3.6725, 
+    'USD': 1.0,
+    'EUR': 0.92,
+    'GBP': 0.79,
+    'JPY': 151.0,
+    'CAD': 1.36 
+  };
+  const usdToAedFixed = 3.6725;
 
   let cSub, cTop, cUsed;
 
   async function loadExchangeRates() {
     try {
-      const res = await fetch('https://api.frankfurter.app/latest?from=USD');
+      const res = await fetch('https://api.frankfurter.app/latest?base=USD');
       if (!res.ok) throw new Error('API failed');
       const data = await res.json();
-      currencyRates = { ...data.rates, 'USD': 1.0 };
-      // Ensure AED is at least available from backend default if missing
-      if (!currencyRates['AED']) currencyRates['AED'] = 3.67;
+      currencyRates = { ...currencyRates, ...data.rates, 'USD': 1.0 };
+      if (!currencyRates['AED']) currencyRates['AED'] = 3.6725;
     } catch(e) {
       console.warn('Real-time rates could not be loaded, using defaults.', e);
     }
