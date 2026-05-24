@@ -119,17 +119,31 @@ MissionPortal/
 1. **Database Setup**
    Ensure PostgreSQL is running and update your `.env` file with the correct `DATABASE_URL`.
 
-2. **Install Python Dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
+2. **Activate Virtual Environment**
+   Navigate to the `backend` directory and activate the virtual environment:
+   - **Windows**:
+     ```powershell
+     cd backend
+     .venv\Scripts\activate
+     ```
+   - **macOS/Linux**:
+     ```bash
+     cd backend
+     source .venv/bin/activate
+     ```
 
-3. **Run Backend Server (FastAPI)**
-    ```bash
-    cd backend
-    uvicorn app.main:app --reload
-    ```
+3. **Install Python Dependencies**
+   Ensure your virtual environment is active, then run:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-4. **Access the Portal**
+4. **Run Backend Server (FastAPI)**
+   Ensure your virtual environment is active and you are in the `backend` directory, then run:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+5. **Access the Portal**
    Open your browser and navigate to: `http://127.0.0.1:8000/`
    *(The FastAPI backend is configured to seamlessly serve the frontend HTML and static assets via clean routes).*

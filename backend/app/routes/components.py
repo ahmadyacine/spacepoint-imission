@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import shutil
+import os
 from app.database import get_db
 from app.models.component import Component
 from app.models.user import User
@@ -63,3 +65,38 @@ def delete_component(component_id: uuid.UUID, db: Session = Depends(get_db), adm
         raise HTTPException(status_code=404, detail="Component not found")
     db.delete(comp)
     db.commit()
+
+@router.post("/bulk", response_model=List[ComponentOut], status_code=201)
+def bulk_create_components(data: List[ComponentCreate], db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    components = []
+    for item in data:
+        comp = Component(**item.model_dump())
+        db.add(comp)
+        components.append(comp)
+    db.commit()
+    for comp in components:
+        db.refresh(comp)
+    return components
+
+@router.post("/upload-image")
+def upload_image(file: UploadFile = File(...), admin: User = Depends(require_admin)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    routes_dir = os.path.dirname(os.path.abspath(__file__))
+    app_dir = os.path.dirname(routes_dir)
+    backend_dir = os.path.dirname(app_dir)
+    root_dir = os.path.dirname(backend_dir)
+    upload_dir = os.path.join(root_dir, "frontend", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    ext = os.path.splitext(file.filename)[1]
+    if not ext:
+        ext = ".png"
+    filename = f"{uuid.uuid4()}{ext}"
+    filepath = os.path.join(upload_dir, filename)
+    
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    return {"url": f"/static/uploads/{filename}"}
