@@ -4,6 +4,21 @@ This document tracks all version releases, features, updates, and bug fixes for 
 
 ---
 
+## [1.2.0] - 2026-05-24
+
+### Added
+- **Gamification, Leaderboard & Stamps System**:
+  - Classmate leaderboard to foster friendly competition among students sharing the same invitation code (batch).
+  - Dynamic student standing rankings showing trophies (🥇, 🥈, 🥉) for the top three, classmate progress tracking, and current student highlight.
+  - Real-time Points indicator (`🏆 <points> XP`) shown globally in the navigation header of all student-facing pages.
+  - **Collapsible Standings Drawer**: Added a slide-out drawer on the left side of all student-facing planning pages. Students can open/close it at any time to view their badges/stamps checklist and their real-time batch leaderboard standing.
+  - **Dynamic Completion congrats Modal**: Added an overlay popup that triggers when the student successfully finishes a design step and clicks next. It dynamically displays the unlocked badge icon and name, the XP points awarded, and details of any active speed release bonuses.
+  - Satellite engineering stamps checklist card on the dashboard showing completed stages in vibrant colors and locked stages in grayscale.
+  - Speed-based release bonus: completing a section within 24 hours of release awards `+100 XP` bonus (Total `200 XP`), decaying by `20 XP` per day down to a base of `100 XP` on Day 6+.
+  - Fully dynamic calculations based on existing DB tables (no migrations or schema changes needed).
+
+---
+
 ## [1.1.0] - 2026-05-24
 
 ### Added

@@ -112,12 +112,15 @@ Now, expose your app to the internet (ports 80/443).
 sudo nano /etc/nginx/sites-available/missionportal
 ```
 
-**Paste the following configuration:**
+**Paste the following configuration (note the `client_max_body_size` which allows uploading images larger than 1MB):**
 
 ```nginx
 server {
     listen 80;
     server_name portal.yourdomain.com; # Change to your actual domain or IP
+
+    # Allow image uploads up to 10MB (prevents Nginx 413 Request Entity Too Large)
+    client_max_body_size 10M;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
@@ -127,9 +130,11 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Static assets handling
+    # Static assets handling (includes logo and uploaded component images in frontend/uploads/)
     location /static/ {
         alias /var/www/missionportal/frontend/;
+        # Ensure files are readable
+        autoindex off;
     }
 }
 ```

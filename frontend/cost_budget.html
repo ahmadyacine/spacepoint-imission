@@ -109,6 +109,10 @@
         <span class="hidden sm:inline-block">← Back</span>
         <span class="sm:hidden font-bold">←</span>
       </button>
+      <!-- Nav Points -->
+      <span id="nav-points-display" class="hidden sm:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 font-bold shrink-0">
+        🏆 <span id="nav-points-val">0</span> XP
+      </span>
       <button onclick="logout()" class="flex items-center gap-1.5 text-xs px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border transition-colors hover:bg-white/5 shrink-0 whitespace-nowrap" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);" title="Sign Out">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
         <span class="hidden sm:inline-block font-semibold">Sign Out</span>
@@ -264,6 +268,25 @@
     }
   })();
 
+  async function updateHeaderPoints() {
+    try {
+      const res = await fetch(`${API_URL}/missions/${missionId}/leaderboard`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const navPts = document.getElementById('nav-points-display');
+        const navPtsVal = document.getElementById('nav-points-val');
+        if (navPts && navPtsVal) {
+          navPtsVal.textContent = data.points;
+          navPts.classList.remove('hidden');
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load header points:", e);
+    }
+  }
+
   function logout(){ localStorage.clear(); window.location.href = '/'; }
 
   // ── Stepper ──────────────────────────────────────────────────────────────────
@@ -391,6 +414,7 @@
       
       renderTable();
       updateSummaryUI(data);
+      updateHeaderPoints();
 
     } catch(e) {
       console.error(e);
@@ -657,10 +681,17 @@
   function goNext(){
     const btn=document.getElementById('btn-next');
     btn.textContent='Saving…';btn.disabled=true;
-    saveBudget(true).then(()=>{ window.location.href = '/dashboard'; });
+    saveBudget(true).then(()=>{
+      if (typeof showBadgePopup === 'function') {
+        showBadgePopup('cost_budget', '/dashboard');
+      } else {
+        window.location.href = '/dashboard';
+      }
+    });
   }
 
   init();
 </script>
+<script src="/static/gamification_drawer.js"></script>
 </body>
 </html>

@@ -65,6 +65,10 @@
         </div>
       </div>
       <button onclick="window.location.href = '/cost-budget'" class="btn-sec text-xs px-3 py-1.5">← Cost Budget</button>
+      <!-- Nav Points -->
+      <span id="nav-points-display" class="hidden sm:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 font-bold shrink-0">
+        🏆 <span id="nav-points-val">0</span> XP
+      </span>
       <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
     </div>
   </nav>
@@ -108,6 +112,46 @@
         <div class="mt-6 pt-5 border-t" style="border-color:rgba(215,210,203,0.08);">
           <p class="text-[10px] font-bold uppercase tracking-widest mb-3" style="color:rgba(215,210,203,0.35);">Mission Journey Progress</p>
           <div id="step-tracker" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+
+      <!-- Gamification: Points, Stamps & Leaderboard -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Stamps & Badges Card -->
+        <div class="card p-6 lg:col-span-2 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4 border-b pb-3" style="border-color:rgba(215,210,203,0.08);">
+              <div>
+                <h2 class="text-sm font-bold text-white flex items-center gap-2">🏆 Your Sat-Engineering Badges</h2>
+                <p class="text-xs text-zinc-400 mt-0.5">Earn points and stamps by completing each satellite planning phase.</p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-xl">
+                  ⭐ <span id="student-score-val">0</span> XP
+                </span>
+              </div>
+            </div>
+
+            <!-- Stamps Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="badges-grid">
+              <!-- Dynamically populated stamps -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaderboard Card -->
+        <div class="card p-6 flex flex-col">
+          <div class="flex items-center justify-between mb-4 border-b pb-3" style="border-color:rgba(215,210,203,0.08);">
+            <div>
+              <h2 class="text-sm font-bold text-white flex items-center gap-2">🏁 Classroom Leaderboard</h2>
+              <p class="text-xs text-zinc-400 mt-0.5" id="leaderboard-batch-text">Class standings</p>
+            </div>
+          </div>
+          
+          <!-- Leaderboard List -->
+          <div class="flex-1 overflow-y-auto max-h-[300px] space-y-2 pr-1" id="leaderboard-list">
+            <!-- Dynamically populated leaderboard rows -->
+          </div>
         </div>
       </div>
 
@@ -581,11 +625,117 @@
     if (dashData) render(dashData);
   }
 
+  // ── Leaderboard & Badges / Stamps Logic ───────────────────────────────────
+  const BADGE_SPECS = [
+    { key: 'mission', name: 'Mission Setup', icon: '🎯', desc: 'Define satellite orbit and goals' },
+    { key: 'components', name: 'Components Selection', icon: '🔧', desc: 'Add payload to your satellite' },
+    { key: 'conops', name: 'CONOPS Schedule', icon: '🕒', desc: 'Distribute operational phases' },
+    { key: 'data_budget', name: 'Data Budget', icon: '📡', desc: 'Configure telemetry generation' },
+    { key: 'power_budget', name: 'Power Budget', icon: '⚡', desc: 'Establish solar power margins' },
+    { key: 'link_budget', name: 'Link Budget', icon: '📶', desc: 'Validate ground communications' },
+    { key: 'mass_budget', name: 'Mass Budget', icon: '⚖️', desc: 'Check satellite mass & volume' },
+    { key: 'cost_budget', name: 'Cost Budget', icon: '💰', desc: 'Ensure financial viability' }
+  ];
+
+  async function loadLeaderboardAndStamps() {
+    try {
+      const res = await fetch(`${API}/missions/${missionId}/leaderboard`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error("Failed to load leaderboard");
+      const data = await res.json();
+      
+      // Update points display in badge and nav
+      document.getElementById('student-score-val').textContent = data.points;
+      document.getElementById('nav-points-val').textContent = data.points;
+      document.getElementById('nav-points-display').classList.remove('hidden');
+      
+      if (data.invitation_code) {
+        document.getElementById('leaderboard-batch-text').innerHTML = `Class standings for batch <strong class="text-[#c4a0e8]">${data.invitation_code}</strong>`;
+      } else {
+        document.getElementById('leaderboard-batch-text').textContent = 'Individual standings (No batch code)';
+      }
+      
+      renderBadges(data.stamps, data.section_xp);
+      renderLeaderboard(data.leaderboard);
+    } catch (e) {
+      console.error("Leaderboard loading failed:", e);
+    }
+  }
+
+  function renderBadges(stamps, sectionXp) {
+    const container = document.getElementById('badges-grid');
+    container.innerHTML = BADGE_SPECS.map(spec => {
+      const earned = stamps[spec.key];
+      const xp = sectionXp[spec.key] || 0;
+      const opacity = earned ? 'opacity-100 border-green-500/30 bg-green-500/5' : 'opacity-40 border-white/5 bg-white/[0.01]';
+      const glow = earned ? 'box-shadow: 0 0 15px rgba(16,185,129,0.1);' : '';
+      const checkIcon = earned 
+        ? `<span class="text-[9px] font-bold text-green-400 bg-green-500/20 border border-green-500/30 px-1.5 py-0.5 rounded-full shrink-0">+${xp} XP</span>` 
+        : '<span class="text-[9px] font-bold text-gray-500 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-full shrink-0">Locked</span>';
+        
+      return `
+        <div class="rounded-2xl p-3 border flex flex-col justify-between items-center text-center transition-all duration-300 ${opacity}" style="${glow}">
+          <div class="text-3xl mb-2">${spec.icon}</div>
+          <div>
+            <p class="text-xs font-bold text-white leading-tight">${spec.name}</p>
+            <p class="text-[9px] text-zinc-500 mt-1 leading-snug hidden sm:block">${spec.desc}</p>
+          </div>
+          <div class="mt-3">
+            ${checkIcon}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderLeaderboard(list) {
+    const container = document.getElementById('leaderboard-list');
+    if (!list || list.length === 0) {
+      container.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No classmates found.</p>';
+      return;
+    }
+    
+    container.innerHTML = list.map((item, index) => {
+      const rank = index + 1;
+      let medal = `<span class="text-xs font-bold text-gray-500 w-5 text-center">#${rank}</span>`;
+      if (rank === 1) medal = '<span class="text-lg w-5 text-center">🥇</span>';
+      if (rank === 2) medal = '<span class="text-lg w-5 text-center">🥈</span>';
+      if (rank === 3) medal = '<span class="text-lg w-5 text-center">🥉</span>';
+      
+      const isCurrent = item.is_current;
+      const bg = isCurrent ? 'background: rgba(101,63,132,0.25); border-color: rgba(101,63,132,0.5);' : 'background: rgba(255,255,255,0.02); border-color: rgba(215,210,203,0.06);';
+      const nameWeight = isCurrent ? 'font-bold text-white' : 'font-semibold text-zinc-300';
+      const highlightBorder = isCurrent ? 'border-l-4 border-l-secondary' : '';
+      
+      return `
+        <div class="rounded-xl p-2.5 border flex items-center justify-between gap-3 ${highlightBorder} transition-all duration-300" style="${bg}">
+          <div class="flex items-center gap-2.5 min-w-0">
+            ${medal}
+            <div class="min-w-0">
+              <p class="text-xs truncate ${nameWeight}">${item.student_name} ${isCurrent ? '<span class="text-[9px] text-[#c4a0e8] bg-[#653f84]/30 px-1 py-0.5 rounded-md ml-1 font-normal">You</span>' : ''}</p>
+              <p class="text-[9px] text-zinc-500 truncate mt-0.5">${item.school_name || 'Classmate'}</p>
+            </div>
+          </div>
+          <div class="text-right shrink-0 flex items-center gap-3">
+            <span class="text-[10px] font-bold text-zinc-400 bg-white/5 border border-white/5 px-2 py-0.5 rounded-md">
+              🧩 ${item.completed_sections}/8
+            </span>
+            <span class="text-xs font-extrabold text-yellow-400">
+              ${item.points} XP
+            </span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   async function startDashboard() {
     selectedCurrency = localStorage.getItem('sp_selected_currency') || 'AED';
     document.getElementById('selected-currency-label').textContent = selectedCurrency;
     await loadExchangeRates();
     loadDashboard();
+    loadLeaderboardAndStamps();
   }
 
   function printReport() {

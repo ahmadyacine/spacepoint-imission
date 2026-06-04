@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from app.database import get_db
 from app.models.mission import Mission
@@ -74,3 +75,182 @@ def get_mission(mission_id: uuid.UUID, db: Session = Depends(get_db), current_us
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
     return mission
+
+from app.models.page_access import PageAccess
+
+@router.get("/{mission_id}/leaderboard")
+def get_mission_leaderboard(
+    mission_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify mission exists
+    mission = db.query(Mission).filter(Mission.id == mission_id).first()
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+        
+    # Student owns the mission, or is admin
+    if mission.student_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to access this mission's leaderboard")
+
+    # School batch invitation code
+    inv_code = current_user.invitation_code
+
+    # Helper function to get completion timestamps
+    def get_completion_timestamps(m_id):
+        # 1. Mission Creation (always completed when mission exists)
+        t_mission = db.query(func.min(Mission.created_at)).filter(Mission.id == m_id).scalar()
+
+        # 2. Components: first added component
+        t_components = db.query(func.min(MissionComponent.created_at)).filter(MissionComponent.mission_id == m_id).scalar()
+
+        # 3. CONOPS: first added mode
+        t_conops = db.query(func.min(MissionMode.created_at)).filter(MissionMode.mission_id == m_id).scalar()
+
+        # 4. Data Budget: first data budget entry
+        t_data = db.query(func.min(DataBudgetEntry.created_at)).join(MissionComponent).filter(MissionComponent.mission_id == m_id).scalar()
+
+        # 5. Power Budget: first power budget entry
+        t_power = db.query(func.min(PowerBudgetEntry.created_at)).join(MissionComponent).filter(MissionComponent.mission_id == m_id).scalar()
+
+        # 6. Link Budget: link budget entry
+        t_link = db.query(func.min(LinkBudgetEntry.created_at)).filter(LinkBudgetEntry.mission_id == m_id).scalar()
+
+        # 7. Mass Budget: first mass budget entry
+        t_mass = db.query(func.min(MassBudgetEntry.created_at)).join(MissionComponent).filter(MissionComponent.mission_id == m_id).scalar()
+
+        # 8. Cost Budget: first cost budget entry
+        t_cost = db.query(func.min(CostBudgetEntry.created_at)).join(MissionComponent).filter(MissionComponent.mission_id == m_id).scalar()
+
+        return {
+            "mission": t_mission,
+            "components": t_components,
+            "conops": t_conops,
+            "data_budget": t_data,
+            "power_budget": t_power,
+            "link_budget": t_link,
+            "mass_budget": t_mass,
+            "cost_budget": t_cost
+        }
+
+    # Helper function to calculate points (XP) based on speed bonus
+    def calculate_section_xp(completion_time, unlock_time):
+        if not completion_time:
+            return 0
+        if not unlock_time:
+            # If no unlock time registered yet, default to base XP
+            return 100
+            
+        diff = completion_time - unlock_time
+        diff_hours = diff.total_seconds() / 3600
+        
+        if diff_hours < 0:
+            diff_hours = 0
+            
+        if diff_hours <= 24:
+            return 200
+        elif diff_hours <= 48:
+            return 180
+        elif diff_hours <= 72:
+            return 160
+        elif diff_hours <= 96:
+            return 140
+        elif diff_hours <= 120:
+            return 120
+        else:
+            return 100
+
+    # Helper function to get unlock times for this batch
+    def get_unlock_times(m_created_at, student_inv_code):
+        unlock_times = {
+            "mission": m_created_at,
+            "components": m_created_at,
+            "conops": m_created_at
+        }
+        
+        lockable_pages = {
+            "data_budget": "data-budget",
+            "power_budget": "power-budget",
+            "link_budget": "link-budget",
+            "mass_budget": "mass-budget",
+            "cost_budget": "cost-budget"
+        }
+        
+        for section_key, page_key in lockable_pages.items():
+            # Query PageAccess for this page and batch
+            pa = None
+            if student_inv_code:
+                pa = db.query(PageAccess).filter(
+                    PageAccess.page_key == page_key,
+                    PageAccess.invitation_code == student_inv_code
+                ).first()
+                
+            if pa and pa.is_unlocked:
+                unlock_times[section_key] = pa.updated_at
+            else:
+                # If page is not unlocked yet or no record, default to mission creation time as fallback
+                unlock_times[section_key] = m_created_at
+                
+        return unlock_times
+
+    # Calculate stamps & points for current student's mission
+    m_created = mission.created_at
+    comp_times = get_completion_timestamps(mission.id)
+    unlock_times = get_unlock_times(m_created, inv_code)
+    
+    stamps = {key: val is not None for key, val in comp_times.items()}
+    
+    student_section_xp = {}
+    for key, c_time in comp_times.items():
+        u_time = unlock_times.get(key)
+        student_section_xp[key] = calculate_section_xp(c_time, u_time)
+        
+    student_points = sum(student_section_xp.values())
+
+    # Get school leaderboard (classmates with same invitation code)
+    leaderboard_data = []
+    if inv_code:
+        students = db.query(User).filter(User.invitation_code == inv_code, User.role == "student").all()
+    else:
+        students = [current_user]
+
+    for s in students:
+        # Find s's missions
+        s_missions = db.query(Mission).filter(Mission.student_id == s.id).all()
+        s_max_points = 0
+        s_max_completed = 0
+        
+        for sm in s_missions:
+            sm_comp_times = get_completion_timestamps(sm.id)
+            sm_unlock_times = get_unlock_times(sm.created_at, s.invitation_code)
+            
+            sm_xp = 0
+            sm_completed = 0
+            for key, c_time in sm_comp_times.items():
+                if c_time is not None:
+                    sm_completed += 1
+                    u_time = sm_unlock_times.get(key)
+                    sm_xp += calculate_section_xp(c_time, u_time)
+                    
+            if sm_xp > s_max_points:
+                s_max_points = sm_xp
+                s_max_completed = sm_completed
+                
+        leaderboard_data.append({
+            "student_name": s.full_name,
+            "school_name": s.school_name,
+            "points": s_max_points,
+            "completed_sections": s_max_completed,
+            "is_current": s.id == current_user.id
+        })
+
+    # Sort: points descending, then name ascending
+    leaderboard_data.sort(key=lambda x: (-x["points"], x["student_name"].lower()))
+
+    return {
+        "stamps": stamps,
+        "section_xp": student_section_xp,
+        "points": student_points,
+        "leaderboard": leaderboard_data,
+        "invitation_code": inv_code
+    }

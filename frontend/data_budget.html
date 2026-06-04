@@ -60,6 +60,10 @@
     </div>
     <div class="flex items-center gap-3">
       <button onclick="window.location.href = '/conops'" class="btn-sec text-xs px-3 py-1.5">← CONOPS</button>
+      <!-- Nav Points -->
+      <span id="nav-points-display" class="hidden sm:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 font-bold shrink-0">
+        🏆 <span id="nav-points-val">0</span> XP
+      </span>
       <button onclick="logout()" class="text-xs px-3 py-1.5 rounded-lg border hover:bg-white/5" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);">Sign Out</button>
     </div>
   </nav>
@@ -281,6 +285,7 @@
     renderMissionBar();
     renderTable();
     recalcAll();
+    updateHeaderPoints();
   }
   init();
 
@@ -565,9 +570,35 @@
   }
 
   function goNext() {
-    saveBudget().then(()=> setTimeout(()=>{ window.location.href = '/power-budget'; }, 600));
+    saveBudget().then(()=> {
+      if (typeof showBadgePopup === 'function') {
+        showBadgePopup('data_budget', '/power-budget');
+      } else {
+        window.location.href = '/power-budget';
+      }
+    });
   }
+  async function updateHeaderPoints() {
+    try {
+      const res = await fetch(`${API}/missions/${missionId}/leaderboard`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const navPts = document.getElementById('nav-points-display');
+        const navPtsVal = document.getElementById('nav-points-val');
+        if (navPts && navPtsVal) {
+          navPtsVal.textContent = data.points;
+          navPts.classList.remove('hidden');
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load header points:", e);
+    }
+  }
+
   function logout() { localStorage.clear(); window.location.href = '/'; }
 </script>
+<script src="/static/gamification_drawer.js"></script>
 </body>
 </html>

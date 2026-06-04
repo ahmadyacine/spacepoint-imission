@@ -51,6 +51,10 @@
     </div>
     <div class="flex items-center gap-2 sm:gap-4 shrink-0">
       <span id="user-name" class="hidden sm:inline-block text-sm truncate max-w-[120px] md:max-w-[200px]" style="color:rgba(215,210,203,0.6);">Loading…</span>
+      <!-- Nav Points -->
+      <span id="nav-points-display" class="hidden sm:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-yellow-400 font-bold shrink-0">
+        🏆 <span id="nav-points-val">0</span> XP
+      </span>
       <button onclick="logout()" class="flex items-center gap-2 text-xs px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border hover:bg-white/5 transition-colors whitespace-nowrap shrink-0" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);" title="Sign Out">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
         <span class="hidden sm:inline-block font-semibold">Sign Out</span>
@@ -270,6 +274,7 @@
         if (u.school_name) document.getElementById('school-name').value = u.school_name;
         if (u.grade) document.getElementById('student-grade').value = u.grade;
         loadMissions();
+        updateHeaderPoints();
       })
       .catch(() => logout());
 
@@ -386,11 +391,36 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed to create mission');
         localStorage.setItem('sp_mission_id', data.id);
-        window.location.href = '/components';
+        if (typeof showBadgePopup === 'function') {
+          showBadgePopup('mission', '/components');
+        } else {
+          window.location.href = '/components';
+        }
       } catch (err) {
         showMsg(err.message);
         btn.textContent = 'Save and Continue →';
         btn.disabled = false;
+      }
+    }
+
+    async function updateHeaderPoints() {
+      const mId = localStorage.getItem('sp_mission_id');
+      if (!mId) return;
+      try {
+        const res = await fetch(`${API}/missions/${mId}/leaderboard`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const navPts = document.getElementById('nav-points-display');
+          const navPtsVal = document.getElementById('nav-points-val');
+          if (navPts && navPtsVal) {
+            navPtsVal.textContent = data.points;
+            navPts.classList.remove('hidden');
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to load header points:", e);
       }
     }
 
@@ -399,5 +429,6 @@
       window.location.href = '/';
     }
   </script>
+  <script src="/static/gamification_drawer.js"></script>
 </body>
 </html>
