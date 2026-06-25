@@ -549,14 +549,12 @@ window.detectPorts = async () => {
             onTelemetry: (entry) => {
                 // Update live dashboard
                 if (entry.type === 'telemetry' && entry.data) {
-                    const timestamp = entry.timestamp * 1000;
                     for (const metricId of ['temp', 'voltage', 'current', 'power']) {
                         if (entry.data[metricId] != null) {
-                            const val = metricId === 'temp' ? entry.data[metricId].toFixed(2) : 
-                                       metricId === 'voltage' ? entry.data[metricId].toFixed(3) : 
-                                       entry.data[metricId].toFixed(4);
+                            // Always pass a NUMBER to updateMetric so charts store numeric data
+                            const numVal = parseFloat(entry.data[metricId]);
                             const mappedId = metricId === 'voltage' ? 'batt' : (metricId === 'current' ? 'item_current' : metricId);
-                            updateMetric(mappedId, val, entry.timestamp);
+                            updateMetric(mappedId, numVal, entry.timestamp);
                         }
                     }
                 }

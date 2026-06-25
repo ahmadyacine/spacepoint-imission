@@ -158,6 +158,15 @@ export function initDashboard(container) {
         };
     };
 
+    // Also expose at module-level immediately so the button never throws ReferenceError
+    if (!window.resetExpandedZoom) {
+        window.resetExpandedZoom = () => {
+            if (window.expandedChartInstance) {
+                window.expandedChartInstance.resetZoom();
+            }
+        };
+    }
+
     // Initialize Charts
     metrics.forEach(m => {
         const ctx = document.getElementById(`chart-${m.id}`).getContext('2d');
@@ -245,25 +254,34 @@ export function resetCharts() {
 }
 
 export function updateMetric(id, value, timestamp) {
+    const numValue = parseFloat(value);
     // Always update the numeric display (even when paused so current value stays visible)
     const valEl = document.getElementById(`val-${id}`);
-    if (valEl) valEl.innerText = value;
+    if (valEl) {
+        const metric = metrics.find(m => m.id === id);
+        if (!isNaN(numValue)) {
+            const decimals = id === 'batt' ? 3 : id === 'item_current' ? 4 : 2;
+            valEl.innerText = numValue.toFixed(decimals);
+        } else {
+            valEl.innerText = '--';
+        }
+    }
 
     // Skip chart update if paused
     if (window.isGraphPaused) return;
 
-    // Update Chart
+    // Update Chart with a proper number
     const chart = charts[id];
-    if (chart) {
+    if (chart && !isNaN(numValue)) {
         const label = new Date(timestamp * 1000).toLocaleTimeString();
 
         // Remove oldest
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
 
-        // Add new
+        // Add new — store as number, not string
         chart.data.labels.push(label);
-        chart.data.datasets[0].data.push(value);
+        chart.data.datasets[0].data.push(numValue);
 
         chart.update();
 
@@ -275,7 +293,7 @@ export function updateMetric(id, value, timestamp) {
                 expanded.data.labels.shift();
                 expanded.data.datasets[0].data.shift();
                 expanded.data.labels.push(label);
-                expanded.data.datasets[0].data.push(value);
+                expanded.data.datasets[0].data.push(numValue);
                 expanded.update();
             }
         }
