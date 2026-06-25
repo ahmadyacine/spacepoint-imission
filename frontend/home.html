@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpacePoint – Platform Hub</title>
+  <link rel="icon" type="image/png" href="/static/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#241134',
+            secondary: '#653f84',
+            light: '#D7D2CB',
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .card-glow { box-shadow: 0 0 40px rgba(101,63,132,0.15); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .card-glow:hover { transform: translateY(-5px); box-shadow: 0 0 60px rgba(101,63,132,0.3); }
+    .star { position: absolute; border-radius: 50%; background: white; animation: twinkle var(--dur, 3s) ease-in-out infinite; }
+    @keyframes twinkle { 0%,100%{opacity:0.2;} 50%{opacity:1;} }
+  </style>
+</head>
+<body class="min-h-screen bg-primary flex flex-col relative overflow-x-hidden text-white">
+
+  <!-- Starfield background -->
+  <div id="stars" class="fixed inset-0 pointer-events-none z-0"></div>
+
+  <!-- Nebula glow -->
+  <div class="fixed inset-0 pointer-events-none z-0">
+    <div class="absolute top-1/4 left-1/4 w-96 h-96 rounded-full" style="background:radial-gradient(circle,rgba(101,63,132,0.18) 0%,transparent 70%);filter:blur(60px);"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full" style="background:radial-gradient(circle,rgba(101,63,132,0.12) 0%,transparent 70%);filter:blur(60px);"></div>
+  </div>
+
+  <div class="relative z-10 flex flex-col min-h-screen">
+    <!-- Navbar -->
+    <nav class="px-6 py-4 flex items-center justify-between" style="background:rgba(36,17,52,0.6);backdrop-filter:blur(10px);border-bottom:1px solid rgba(215,210,203,0.1);">
+      <div class="flex items-center gap-3">
+        <img src="/static/logo.png" alt="SpacePoint" class="h-8 w-auto object-contain" style="filter:brightness(1.05);"/>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="user-name" class="text-sm text-gray-300">Loading...</span>
+        <button onclick="logout()" class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-white/10" style="border:1px solid rgba(215,210,203,0.2);color:rgba(215,210,203,0.8);">
+          Sign Out
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col items-center justify-center p-6 lg:p-12">
+      <div class="text-center mb-12">
+        <h1 class="text-3xl md:text-5xl font-bold mb-4">Welcome to SpacePoint</h1>
+        <p class="text-lg text-gray-400 max-w-2xl mx-auto">Select a platform below to continue your educational aerospace journey.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+        
+        <!-- Mission Portal -->
+        <a href="/mission" class="card-glow rounded-2xl p-8 flex flex-col items-center text-center group cursor-pointer relative overflow-hidden" style="background:linear-gradient(160deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); border:1px solid rgba(215,210,203,0.1);">
+          <div class="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-4xl" style="background:rgba(101,63,132,0.2); color:#c4a0e8;">
+            🚀
+          </div>
+          <h2 class="text-xl font-bold mb-3">Mission Portal</h2>
+          <p class="text-sm text-gray-400">Design your satellite mission step by step. Configure budgets, select components, and plan operations.</p>
+        </a>
+
+        <!-- Software Guide -->
+        <a href="/guide" class="card-glow rounded-2xl p-8 flex flex-col items-center text-center group cursor-pointer relative overflow-hidden" style="background:linear-gradient(160deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); border:1px solid rgba(215,210,203,0.1);">
+          <div class="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-4xl" style="background:rgba(101,63,132,0.2); color:#c4a0e8;">
+            📚
+          </div>
+          <h2 class="text-xl font-bold mb-3">Software Guide</h2>
+          <p class="text-sm text-gray-400">Learn programming concepts and software development basics for aerospace engineering.</p>
+        </a>
+
+        <!-- Ground Station -->
+        <a id="gs-link" href="/ground-station" class="card-glow rounded-2xl p-8 flex flex-col items-center text-center group cursor-pointer relative overflow-hidden" style="background:linear-gradient(160deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); border:1px solid rgba(215,210,203,0.1);">
+          <div class="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-4xl" style="background:rgba(101,63,132,0.2); color:#c4a0e8;">
+            🛰️
+          </div>
+          <h2 class="text-xl font-bold mb-3">Ground Station</h2>
+          <p class="text-sm text-gray-400">Monitor live satellite telemetry, command subsystems, and visualize orbital data in real-time.</p>
+        </a>
+
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 text-center text-xs text-gray-500 border-t border-white/5">
+      © 2026 SpacePoint &nbsp;·&nbsp; Educational Platform
+    </footer>
+  </div>
+
+  <script>
+    // Security check
+    const token = localStorage.getItem('sp_token');
+    if (!token) {
+      window.location.href = '/';
+    }
+
+    // Append token to Ground Station URL for auto-login
+    const gsLink = document.getElementById('gs-link');
+    gsLink.href = '/ground-station?token=' + encodeURIComponent(token);
+
+    // Load User Profile
+    async function loadProfile() {
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Session invalid');
+        const user = await res.json();
+        document.getElementById('user-name').textContent = user.full_name || user.email;
+      } catch (err) {
+        logout();
+      }
+    }
+    
+    function logout() {
+      localStorage.removeItem('sp_token');
+      localStorage.removeItem('sp_role');
+      window.location.href = '/';
+    }
+
+    loadProfile();
+
+    // Starfield animation
+    const starsEl = document.getElementById('stars');
+    for (let i = 0; i < 120; i++) {
+      const s = document.createElement('div');
+      const size = Math.random() * 2.5 + 0.5;
+      s.className = 'star';
+      s.style.cssText = `
+        width:${size}px; height:${size}px;
+        top:${Math.random()*100}%;
+        left:${Math.random()*100}%;
+        --dur:${(Math.random()*4+2).toFixed(1)}s;
+        animation-delay:${(Math.random()*5).toFixed(1)}s;
+        opacity:${Math.random()*0.5+0.1};
+      `;
+      starsEl.appendChild(s);
+    }
+  </script>
+</body>
+</html>

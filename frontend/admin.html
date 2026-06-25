@@ -54,7 +54,7 @@
     </div>
     <div class="flex items-center gap-2 sm:gap-3 shrink-0">
       <span id="admin-name" class="hidden sm:inline-block text-sm truncate max-w-[120px] md:max-w-[200px]" style="color:rgba(215,210,203,0.5);">Loading…</span>
-      <button onclick="logout()" class="flex items-center gap-2 text-xs px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border hover:bg-white/5 transition-colors whitespace-nowrap shrink-0" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);" title="Sign Out">
+      <a href="/home" class="flex items-center gap-2 text-xs px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border hover:bg-white/5 transition-colors whitespace-nowrap shrink-0" style="border-color:rgba(168,85,247,0.4);color:#c4a0e8;background:rgba(101,63,132,0.15);" title="Back to Hub"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg><span class="hidden sm:inline-block font-semibold">Hub</span></a> <button onclick="logout()" class="flex items-center gap-2 text-xs px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border hover:bg-white/5 transition-colors whitespace-nowrap shrink-0" style="border-color:rgba(215,210,203,0.2);color:rgba(215,210,203,0.55);" title="Sign Out">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
         <span class="hidden sm:inline-block font-semibold">Sign Out</span>
       </button>
@@ -69,6 +69,7 @@
       <button id="tab-students" onclick="switchAdminTab('students')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">Registered Students</button>
       <button id="tab-missions" onclick="switchAdminTab('missions')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🚀 Student Missions</button>
       <button id="tab-pages" onclick="switchAdminTab('pages')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🔐 Page Access</button>
+      <button id="tab-gs" onclick="switchAdminTab('gs')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🛰️ Ground Station</button>
     </div>
   </div>
 
@@ -310,6 +311,69 @@
       </div>
       <!-- Lockable pages grid -->
       <div id="pages-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+  </div>
+
+  <!-- GROUND STATION VIEW -->
+  <div id="view-gs" class="admin-view hidden">
+    <div class="px-4 sm:px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-bold text-white">Ground Station Access Control</h1>
+          <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">Control which sections of the Ground Station students can access per batch.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-xs font-bold text-gray-500 uppercase shrink-0">Select Batch:</label>
+          <select id="gs-code-filter" onchange="loadGSAccess()" class="input-field w-full sm:w-[200px] !py-[0.5rem] text-xs">
+            <option value="">Choose a Code…</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-8 py-8 pb-12">
+      <div class="rounded-xl px-4 py-3 mb-6 text-sm" style="background:rgba(101,63,132,0.1);border:1px solid rgba(101,63,132,0.3);color:#c4a0e8;">
+        ℹ️ Locking a section will hide all its related cards and tools in the student's dashboard.
+      </div>
+      
+      <div id="gs-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- CDHS Telemetry Card -->
+        <div class="rounded-2xl p-6" style="background:rgba(255,255,255,0.02);border:1.5px solid rgba(215,210,203,0.08);">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">CDHS Telemetry Data</h3>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="toggle-cdhs-telemetry" class="sr-only peer" onchange="toggleGSSection('cdhs-telemetry', this.checked)">
+              <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+            </label>
+          </div>
+          <p class="text-sm text-gray-400 mb-4">Controls access to the main 2x3 telemetry grid:</p>
+          <ul class="text-xs text-gray-500 space-y-2">
+            <li>• 🌡️ Temperature</li>
+            <li>• ⚡ Voltage</li>
+            <li>• ⚡ Current</li>
+            <li>• 💡 Power</li>
+            <li>• 📶 Signal RSSI</li>
+            <li>• 📊 SNR</li>
+          </ul>
+        </div>
+
+        <!-- ADCS & Attitude Card -->
+        <div class="rounded-2xl p-6" style="background:rgba(255,255,255,0.02);border:1.5px solid rgba(215,210,203,0.08);">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">ADCS & Attitude Simulation</h3>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="toggle-adcs-telemetry" class="sr-only peer" onchange="toggleGSSection('adcs-telemetry', this.checked)">
+              <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+            </label>
+          </div>
+          <p class="text-sm text-gray-400 mb-4">Controls access to the lower visualization section:</p>
+          <ul class="text-xs text-gray-500 space-y-2">
+            <li>• 🧭 3D Satellite Attitude (Roll/Pitch/Yaw)</li>
+            <li>• 🌍 GPS & Orbital Position Map</li>
+            <li>• ☀️ Sun-Pointing Simulation & Reaction Wheels</li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -597,7 +661,7 @@
 
     // ── Tab Management ────────────────────────────────────────────────────────
     let currentTab = 'components';
-    const ALL_TABS = ['components', 'codes', 'students', 'missions', 'pages'];
+    const ALL_TABS = ['components', 'codes', 'students', 'missions', 'pages', 'gs'];
     function switchAdminTab(tab) {
       ALL_TABS.forEach(t => {
         const view = document.getElementById('view-' + t);
@@ -631,6 +695,17 @@
            pagesFilter.innerHTML = '<option value="">Choose a Code…</option>' + allCodes.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
         }
         loadPageAccess(); 
+      }
+      if (tab === 'gs') {
+        const gsFilter = document.getElementById('gs-code-filter');
+        if (allCodes.length === 0) {
+           loadCodes().then(() => {
+             gsFilter.innerHTML = '<option value="">Choose a Code…</option>' + allCodes.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
+           });
+        } else {
+           gsFilter.innerHTML = '<option value="">Choose a Code…</option>' + allCodes.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
+        }
+        loadGSAccess();
       }
     }
 
@@ -1668,6 +1743,46 @@
         btn.disabled = false;
         importedComponentsQueue = [];
       }
+    }
+
+    // ── Ground Station Access Management ────────────────────────────────────
+    async function loadGSAccess() {
+      const code = document.getElementById('gs-code-filter').value;
+      if (!code) {
+        document.getElementById('toggle-cdhs-telemetry').checked = false;
+        document.getElementById('toggle-adcs-telemetry').checked = false;
+        return;
+      }
+      try {
+        const res = await fetch(`${API}/page-access?code=${code}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw await res.json();
+        const data = await res.json();
+        
+        const cdhsAccess = data.find(p => p.page_key === 'cdhs-telemetry');
+        const adcsAccess = data.find(p => p.page_key === 'adcs-telemetry');
+        
+        document.getElementById('toggle-cdhs-telemetry').checked = cdhsAccess ? cdhsAccess.is_unlocked : false;
+        document.getElementById('toggle-adcs-telemetry').checked = adcsAccess ? adcsAccess.is_unlocked : false;
+      } catch (e) {
+        showMsg(e.detail || e.message);
+      }
+    }
+
+    async function toggleGSSection(pageKey, newState) {
+      const code = document.getElementById('gs-code-filter').value;
+      if (!code) {
+        showMsg('Please select a batch code first.');
+        return;
+      }
+      try {
+        const res = await fetch(`${API}/page-access/${pageKey}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ invitation_code: code, is_unlocked: newState })
+        });
+        if (!res.ok) throw await res.json();
+        showMsg(`${pageKey} is now ${newState ? 'unlocked' : 'locked'} for batch ${code}.`, false);
+      } catch (e) { showMsg(e.detail || e.message); }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/ground-station/logo.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cube-Sat Ground Station - Realtime Metrics</title>
+  <!-- We're importing the 'Outfit' font for a modern, sleek look -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+  <!-- Leaflet for 2D Tactical Mapping -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" crossorigin src="/ground-station/assets/index-Chfa9aUM.js"></script>
+  <link rel="stylesheet" crossorigin href="/ground-station/assets/index-CyCAFrzd.css">
+</head>
+
+<body>
+  <div id="app">
+    <div id="starfield"></div>
+    <div id="space-objects"></div>
+    <div id="login-portal" class="login-overlay">
+      <!-- SVG Gradients for Dashboard -->
+      <svg width="0" height="0" style="position:absolute;">
+        <defs>
+          <linearGradient id="graph-gradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#00d2ff" />
+            <stop offset="100%" stop-color="transparent" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="login-card">
+        <div class="login-header">
+          <h2>Admin<span>Access</span></h2>
+          <p>Secure Telemetry Portal</p>
+        </div>
+        <form id="login-form">
+          <div class="input-group">
+            <input type="text" id="username" placeholder="Username" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <input type="password" id="password" placeholder="Password">
+            <button type="button" class="password-toggle-btn" onclick="window.togglePassword('password')">
+              <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <button type="submit" class="btn-primary">Login as Admin</button>
+          <div style="text-align:center; margin-top:10px;">
+            <a href="#" id="open-register" style="color:rgba(155, 114, 192, 0.8); font-size:0.85rem; text-decoration:none; transition: color 0.2s;">Need admin access? Register here.</a>
+          </div>
+          <div class="separator"><span>OR</span></div>
+          <button type="button" id="guest-entry" class="btn-guest">Continue as Guest</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="dashboard-container">
+      <header>
+        <div class="logo">
+          <img src="/ground-station/logo.png" alt="SPACE" class="main-logo" />
+        </div>
+
+        <div class="source-selector">
+          <button class="source-btn active" data-source="CDHS" onclick="setDataSource('CDHS')">Sat Control </button>
+          <button class="source-btn" data-source="SIM" onclick="setDataSource('SIM')">SIM </button>
+          <!-- Simulation Toggle (Hidden by default, shown when SIM is active) -->
+          <button id="sim-toggle-btn" class="toggle-btn hidden" onclick="toggleSimulation()"
+            style="background:rgba(255,65,108,0.2);border:1px solid #ff416c;color:#ff416c;border-radius:20px;padding:6px 16px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all 0.3s;">
+            SIM: OFF</button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;">
+          <!-- Detect Ports Button -->
+          <button id="btn-detect" onclick="window.detectPorts()"
+            style="background:rgba(0,255,128,0.15);border:1px solid rgba(0,255,128,0.45);color:rgba(120,255,170,0.95);border-radius:20px;padding:6px 16px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all 0.3s;white-space:nowrap;">
+             Detect Ports
+          </button>
+          <button id="btn-disconnect" onclick="window.disconnectPort()" class="hidden"
+            style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.45);color:rgba(255,140,140,0.95);border-radius:20px;padding:6px 16px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all 0.3s;">
+            Disconnect
+          </button>
+          <span id="active-port-label" style="color:#888;font-size:0.85rem;white-space:nowrap;">No Port</span>
+          
+          <!-- Global Graph Pause Button -->
+          <button id="graph-pause-btn" onclick="toggleGraphPause()"
+            style="background:rgba(0,210,255,0.12);border:1px solid rgba(0,210,255,0.35);color:rgba(0,210,255,0.9);border-radius:20px;padding:6px 16px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all 0.3s;">
+             Pause
+          </button>
+          <!-- History Button -->
+          <button onclick="openHistoryPanel()"
+            style="background:rgba(157,80,187,0.15);border:1px solid rgba(157,80,187,0.45);color:rgba(200,140,255,0.95);border-radius:20px;padding:6px 16px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all 0.3s;">
+             History
+          </button>
+          <!-- Mission Gallery Button -->
+          <button id="gallery-btn" onclick="window.openGallery()"
+            style="background:rgba(255,165,0,0.15);border:1px solid rgba(255,165,0,0.45);color:rgba(255,190,100,0.95);border-radius:20px;padding:6px 16px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all 0.3s;">
+             Gallery
+          </button>
+          
+          <!-- Back to Hub -->
+          <button onclick="window.location.href='/home'"
+            style="background:rgba(107,33,168,0.15);border:1px solid rgba(168,85,247,0.45);color:rgba(216,180,254,0.95);border-radius:20px;padding:6px 16px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all 0.3s;">
+             Hub
+          </button>
+          
+          <!-- Sign Out -->
+          <button onclick="localStorage.clear(); window.location.href='/';"
+            style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.45);color:rgba(252,165,165,0.95);border-radius:20px;padding:6px 16px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all 0.3s;">
+             Sign Out
+          </button>
+          <div class="status-badge" id="connection-status">
+            <span class="dot"></span> System Live
+          </div>
+        </div>
+      </header>
+
+      <main class="grid-container">
+        <!-- We will inject our data cards here later using JavaScript -->
+        <div class="loading">Loading Dashboard...</div>
+      </main>
+
+      <!-- Specialized Visualization Grid -->
+      <section class="viz-grid">
+        <!-- Attitude Box -->
+        <div class="viz-card" id="attitude-box">
+          <div class="card-header">
+            <div class="card-title"> Satellite Attitude</div>
+            <div style="font-size:0.7rem; color:rgba(255,255,255,0.4);">Click to Expand</div>
+          </div>
+          <div class="viz-content">
+            <div class="viz-stats">
+              <div class="stat-item"><span>Roll:</span> <b id="viz-roll">0.0°</b></div>
+              <div class="stat-item"><span>Pitch:</span> <b id="viz-pitch">0.0°</b></div>
+              <div class="stat-item"><span>Yaw:</span> <b id="viz-yaw">0.0°</b></div>
+            </div>
+            <div class="viz-3d-wrap">
+              <div id="sat-viz-3d" class="sat-aspect-mini">
+                 <!-- 3D Satellite injected here by attitude.js -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GPS Box -->
+        <div class="viz-card" id="gps-box">
+          <div class="card-header">
+            <div class="card-title"> Orbital Position</div>
+          </div>
+          <div class="viz-content">
+            <div class="viz-stats">
+              <div class="stat-item"><span>Lat:</span> <b id="viz-lat">---</b></div>
+              <div class="stat-item"><span>Lon:</span> <b id="viz-lon">---</b></div>
+              <div class="stat-item"><span>Alt:</span> <b id="viz-alt">---</b></div>
+            </div>
+            <div class="viz-3d-wrap">
+              <div id="earth-viz-3d" class="earth-sphere-mini">
+                <div class="earth-land-mini"></div>
+                <div class="earth-atmosphere"></div>
+                <div id="earth-mini-sat" class="earth-mini-sat"></div>
+              </div>
+            </div>
+          </div>
+        <!-- Tactical Map Box -->
+        <div class="viz-card" id="map-box">
+          <div class="card-header">
+            <div class="card-title"> Tactical Ground Track</div>
+            <div style="font-size:0.7rem; color:rgba(255,255,255,0.4);">LIVE Tracking Overlay</div>
+          </div>
+          <div class="viz-content map-wrap">
+            <div id="world-map" style="width:100%; height:100%; min-height:220px; border-radius:12px; background:rgba(0,0,0,0.25);"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADCS Panel (populated by adcs.js) -->
+      <div id="adcs-panel"></div>
+
+      <!-- Data Inject Panel -->
+      <div class="card sat-full-width-section" id="data-inject-panel" style="margin-top: 1.5rem; display: block;">
+        <div class="card-title"> Data Inject (Test Telemetry)</div>
+        <div class="inject-grid">
+          <div class="inject-field">
+            <label>Temp (°C)</label>
+            <input type="number" id="sim-temp" value="25" step="0.1">
+          </div>
+          <div class="inject-field">
+            <label>Voltage (V)</label>
+            <input type="number" id="sim-batt" value="3.7" step="0.01">
+          </div>
+          <div class="inject-field">
+            <label>Current (mA)</label>
+            <input type="number" id="sim-current" value="0.5" step="0.01">
+          </div>
+          <div class="inject-field">
+            <label>Power (mW)</label>
+            <input type="number" id="sim-power" value="1850" step="1">
+          </div>
+          <div class="inject-field">
+            <label>RSSI (dBm)</label>
+            <input type="number" id="sim-rssi" value="-75" step="1">
+          </div>
+          <div class="inject-field">
+            <label>SNR (dB)</label>
+            <input type="number" id="sim-snr" value="8" step="0.1">
+          </div>
+        </div>
+        <button class="btn-primary" onclick="window.injectData()" style="margin-top:1rem;max-width:200px;">
+           Inject Packet
+        </button>
+      </div>
+
+      <!-- Admin Panel (Hidden by default) -->
+      <div id="admin-panel" class="admin-panel hidden">
+        <!-- Satellite Viewer -->
+
+
+        <div class="admin-grid">
+
+          <!-- Simulation Control -->
+          <div class="admin-card" id="sim-control-card">
+            <h3> Simulation Control</h3>
+            <div class="slider-group">
+              <label> Temperature: <span id="sim-temp-val">25</span>°C</label>
+              <input type="range" id="sim-temp" min="-120" max="150" value="25">
+            </div>
+            <div class="slider-group">
+              <label> Voltage: <span id="sim-batt-val">4.2</span>V</label>
+              <input type="range" id="sim-batt" min="0" max="30" step="0.1" value="4.2">
+            </div>
+            <div class="slider-group">
+              <label> Current: <span id="sim-current-val">0.5</span>mA</label>
+              <input type="range" id="sim-current" min="0" max="30" step="0.1" value="0.5">
+            </div>
+            <div class="slider-group">
+              <label> Power: <span id="sim-power-val">2.1</span>mW</label>
+              <input type="range" id="sim-power" min="0" max="30" step="0.1" value="2.1">
+            </div>
+            <div class="slider-group">
+              <label> Signal (RSSI): <span id="sim-rssi-val">-80</span>dBm</label>
+              <input type="range" id="sim-rssi" min="-120" max="-40" step="1" value="-80">
+            </div>
+            <div class="slider-group">
+              <label> SNR: <span id="sim-snr-val">8.0</span>dB</label>
+              <input type="range" id="sim-snr" min="-20" max="15" step="0.5" value="8">
+            </div>
+            <button class="btn-primary full-width" onclick="window.injectData()"> Inject Telemetry</button>
+          </div>
+
+          <!-- Alert Configuration (Tabbed: CDHS / SIM) -->
+          <div class="admin-card alert-config-card">
+            <h3> Alert Configuration</h3>
+
+            <!-- Tab Header -->
+            <div class="alert-tab-bar">
+              <button id="alert-tab-cdhs" class="alert-tab active" onclick="switchAlertTab('cdhs')"> CDHS</button>
+              <button id="alert-tab-sim" class="alert-tab" onclick="switchAlertTab('sim')"> SIM</button>
+            </div>
+
+            <!-- CDHS Thresholds -->
+            <div id="alert-panel-cdhs" class="alert-tab-panel">
+              <div class="alert-config-grid">
+                <div class="threshold-group">
+                  <label> Temperature Max (°C)</label>
+                  <input type="number" id="cdhs-threshold-temp-max" step="0.1" value="35.0">
+                </div>
+                <div class="threshold-group">
+                  <label> Temperature Min (°C)</label>
+                  <input type="number" id="cdhs-threshold-temp-min" step="0.1" value="0.0">
+                </div>
+                <div class="threshold-group">
+                  <label> Voltage Max (V)</label>
+                  <input type="number" id="cdhs-threshold-voltage-max" step="0.1" value="5.5">
+                </div>
+                <div class="threshold-group">
+                  <label> Voltage Min (V)</label>
+                  <input type="number" id="cdhs-threshold-voltage-min" step="0.1" value="3.0">
+                </div>
+                <div class="threshold-group">
+                  <label> Current Max (mA)</label>
+                  <input type="number" id="cdhs-threshold-current-max" step="0.1" value="1.0">
+                </div>
+                <div class="threshold-group">
+                  <label> Power Max (mW)</label>
+                  <input type="number" id="cdhs-threshold-power-max" step="0.1" value="2.0">
+                </div>
+              </div>
+              <button class="btn-primary full-width" onclick="window.saveThresholdsFor('CDHS_Board')"> Save
+                CDHS</button>
+              <button class="btn-secondary full-width" onclick="window.loadThresholdsFor('CDHS_Board')">
+                Reload</button>
+            </div>
+
+            <!-- SIM Thresholds -->
+            <div id="alert-panel-sim" class="alert-tab-panel hidden">
+              <div class="alert-config-grid">
+                <div class="threshold-group">
+                  <label> Temperature Max (°C)</label>
+                  <input type="number" id="sim-threshold-temp-max" step="0.1" value="35.0">
+                </div>
+                <div class="threshold-group">
+                  <label> Temperature Min (°C)</label>
+                  <input type="number" id="sim-threshold-temp-min" step="0.1" value="0.0">
+                </div>
+                <div class="threshold-group">
+                  <label> Voltage Max (V)</label>
+                  <input type="number" id="sim-threshold-voltage-max" step="0.1" value="5.5">
+                </div>
+                <div class="threshold-group">
+                  <label> Voltage Min (V)</label>
+                  <input type="number" id="sim-threshold-voltage-min" step="0.1" value="3.0">
+                </div>
+                <div class="threshold-group">
+                  <label> Current Max (mA)</label>
+                  <input type="number" id="sim-threshold-current-max" step="0.1" value="1.0">
+                </div>
+                <div class="threshold-group">
+                  <label> Power Max (mW)</label>
+                  <input type="number" id="sim-threshold-power-max" step="0.1" value="2.0">
+                </div>
+              </div>
+              <button class="btn-primary full-width" onclick="window.saveThresholdsFor('Sat_1')"> Save SIM</button>
+              <button class="btn-secondary full-width" onclick="window.loadThresholdsFor('Sat_1')"> Reload</button>
+            </div>
+          </div>
+
+          <!-- Command Center -->
+          <div class="admin-card" id="command-center-card">
+            <h3> Command Center</h3>
+            <div style="display:flex; flex-direction:column; gap:15px;">
+              <button class="btn-primary full-width" onclick="window.sendCommand('take_picture')" style="background:linear-gradient(135deg, rgba(155,114,192,0.4), rgba(101,63,132,0.4));"> Take a Picture</button>
+
+              <!-- Motor Speed Slider -->
+              <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                  <label style="color:#aaa; font-size:0.8rem; cursor:help;" title="0 = stopped, 128 = half speed, 255 = full speed"> Motor Speed:</label>
+                  <span id="motor-speed-val" style="color:#00d2ff; font-weight:600; font-size:0.9rem; font-family:monospace;">255</span>
+                </div>
+                <input type="range" id="motor-speed" min="0" max="255" value="255"
+                  style="width:100%; accent-color:#00d2ff; cursor:pointer;"
+                  title="0 = stopped, 128 = half speed, 255 = full speed"
+                  oninput="document.getElementById('motor-speed-val').textContent = this.value">
+                <div style="display:flex; justify-content:space-between; font-size:0.6rem; color:#555; margin-top:2px; padding:0 2px;">
+                  <span>0 OFF</span><span>128 HALF</span><span>255 FULL</span>
+                </div>
+              </div>
+
+              <!-- Timing Customization -->
+              <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
+                <label style="display:block; font-size:0.8rem; color:#aaa; margin-bottom:8px;"> Quick Spin Duration:</label>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+                  <button class="btn-cmd" onclick="window.setMotorDuration(1000)" style="flex:1; min-width:48px; font-size:0.85rem;">1s</button>
+                  <button class="btn-cmd" onclick="window.setMotorDuration(2000)" style="flex:1; min-width:48px; font-size:0.85rem; border-color:#00d2ff; color:#00d2ff;">2s</button>
+                  <button class="btn-cmd" onclick="window.setMotorDuration(3000)" style="flex:1; min-width:48px; font-size:0.85rem;">3s</button>
+                  <button class="btn-cmd" onclick="window.setMotorDuration(5000)" style="flex:1; min-width:48px; font-size:0.85rem;">5s</button>
+                  <button class="btn-cmd" onclick="window.setMotorDuration(10000)" style="flex:1; min-width:48px; font-size:0.85rem; border-color:#ff9800; color:#ff9800;">10s</button>
+                </div>
+                
+                <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:12px;">
+                  <div style="display:flex; gap:10px; align-items:center;" title="0 = runs until STOP button pressed">
+                    <label style="color:#aaa; font-size:0.85rem;">Duration:</label>
+                    <input type="number" id="cmd-motor-duration-val" min="0" value="2" style="width:70px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:6px; border-radius:6px;" oninput="window.updateCmdDuration()">
+                    <select id="cmd-motor-duration-unit" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:6px; border-radius:6px;" onchange="window.updateCmdDuration()">
+                      <option value="1000" style="color:black;" selected>Seconds</option>
+                    </select>
+                    <input type="hidden" id="cmd-motor-duration" value="2000">
+                  </div>
+                  <div id="motor-cmd-warning" style="display:none; color:#ff416c; font-size:0.75rem; font-weight:bold; animation: pulse 1.5s infinite;"> WARNING: Motor runtime &gt; 3 Minutes! (Risk of overheating)</div>
+                </div>
+
+                <div class="command-buttons" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+                  <button class="btn-cmd" onclick="window.sendMotorCommandUI('ccw')" style="flex:1;">⟲ Spin CCW</button>
+                  <button class="btn-cmd" onclick="window.sendMotorCommandUI('cw')" style="flex:1;">⟳ Spin CW</button>
+               </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Management (Admin Only) -->
+          <div class="admin-card wide hidden" id="user-mgmt-card">
+            <h3> User Management (Pending Approvals)</h3>
+            <div id="pending-users-list" style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+              <p style="color:#888; font-style:italic;">No pending registration requests.</p>
+            </div>
+          </div>
+
+          <!-- Mission Log -->
+          <div class="admin-card wide">
+            <h3> Mission Log</h3>
+            <div id="command-log" class="log-console">
+              <div class="log-entry system">System initialized. Waiting for commands...</div>
+            </div>
+          </div>
+
+          <!-- Raw Serial Terminal -->
+          <div class="admin-card wide" style="margin-top:20px;">
+            <h3>💻 Raw Serial Terminal</h3>
+            <div id="serial-terminal" class="log-console" style="height:350px; background:#0a0a0a; font-family:'Courier New', monospace; font-size:0.8rem; overflow-y:auto; border:1px solid #333;">
+              <div class="log-entry system" style="color:#00ff00;">Terminal initialized. Awaiting data...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Notification Container -->
+  <div id="alert-container" class="alert-container"></div>
+
+  <!-- ===== History Modal ===== -->
+  <div id="history-modal" class="modal-overlay hidden">
+    <div class="history-modal-content">
+
+      <!-- Header -->
+      <div class="hist-header">
+        <h2 class="hist-title"> Historical Data</h2>
+        <button class="modal-close" onclick="closeHistoryPanel()">×</button>
+      </div>
+
+      <!-- Controls -->
+      <div class="hist-controls">
+        <div class="hist-control-group">
+          <label>Device</label>
+          <select id="hist-device" onchange="loadHistory()">
+            <option value="CDHS_Board">CDHS </option>
+            <option value="Sat_1">SIM </option>
+          </select>
+        </div>
+        <div class="hist-control-group">
+          <label>Time Range</label>
+          <select id="hist-range" onchange="loadHistory()">
+            <option value="15">Last 15 min</option>
+            <option value="60" selected>Last 1 hour</option>
+            <option value="360">Last 6 hours</option>
+            <option value="1440">Last 24 hours</option>
+            <option value="10080">Last 7 days</option>
+            <option value="43200">Last 1 month</option>
+            <option value="259200">Last 6 months</option>
+            <option value="525600">Last 1 year</option>
+          </select>
+        </div>
+        <div class="hist-control-group">
+          <label>Interval</label>
+          <select id="hist-interval" onchange="loadHistory()">
+            <option value="0">Raw (every reading)</option>
+            <option value="10">10 seconds</option>
+            <option value="60" selected>1 minute</option>
+            <option value="300">5 minutes</option>
+            <option value="900">15 minutes</option>
+            <option value="3600">1 hour</option>
+            <option value="21600">6 hours</option>
+            <option value="86400">1 day</option>
+          </select>
+        </div>
+        <div class="hist-control-group">
+          <label>PDF Mode</label>
+          <select id="hist-pdf-mode">
+            <option value="color" selected>Color (Dark)</option>
+            <option value="bw">B&W (Light)</option>
+          </select>
+        </div>
+        <button class="hist-load-btn" onclick="loadHistory()"> Load</button>
+        <button id="hist-pdf-btn" onclick="exportHistoryPDF()"
+          style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.4);color:rgba(255,140,140,0.95);border-radius:12px;padding:8px 18px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;align-self:flex-end;">
+           Export PDF
+        </button>
+        <button id="hist-live-btn" onclick="toggleHistoryLive()"
+          style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);border-radius:12px;padding:8px 18px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;align-self:flex-end;">
+           Live
+        </button>
+        <button class="modal-reset-zoom-btn" onclick="resetHistoryZoom()" style="margin-left:auto;">⟳ Reset
+          Zoom</button>
+      </div>
+
+      <!-- Metric Toggles -->
+      <div class="hist-legend">
+        <label class="hist-legend-item" style="--c:#ff6b6b">
+          <input type="checkbox" class="hist-metric-check" data-idx="0" checked> Temperature
+        </label>
+        <label class="hist-legend-item" style="--c:#00d2ff">
+          <input type="checkbox" class="hist-metric-check" data-idx="1" checked> Voltage
+        </label>
+        <label class="hist-legend-item" style="--c:#ffd93d">
+          <input type="checkbox" class="hist-metric-check" data-idx="2" checked> Current
+        </label>
+        <label class="hist-legend-item" style="--c:#6bcb77">
+          <input type="checkbox" class="hist-metric-check" data-idx="3" checked> Power
+        </label>
+        <label class="hist-legend-item" style="--c:#c77dff">
+          <input type="checkbox" class="hist-metric-check" data-idx="4"> RSSI
+        </label>
+        <span id="hist-status" class="hist-status"></span>
+      </div>
+
+      <!-- Chart -->
+      <div class="hist-chart-wrap">
+        <canvas id="hist-chart"></canvas>
+      </div>
+
+      <!-- Table -->
+      <div class="hist-table-wrap">
+        <table class="hist-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Temp (°C)</th>
+              <th>Voltage (V)</th>
+              <th>Current (mA)</th>
+              <th>Power (mW)</th>
+              <th>RSSI (dBm)</th>
+            </tr>
+          </thead>
+          <tbody id="hist-table-body"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== Port Selection Modal ===== -->
+  <div id="ports-modal" class="modal-overlay hidden" style="z-index:9999;">
+    <div class="modal-content" style="max-width:450px;">
+      <div class="modal-header-row" style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+        <h2 style="margin:0; font-size:1.3rem;">Select Serial Port</h2>
+        <button class="modal-close" onclick="closePortsModal()">×</button>
+      </div>
+      <div id="port-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+         <p style="color:#aaa;">Scanning for ports...</p>
+      </div>
+      <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn-secondary" onclick="window.detectPorts()"> Rescan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Confirm Connect Modal ===== -->
+  <div id="confirm-modal" class="modal-overlay hidden" style="z-index:9999;">
+    <div class="modal-content" style="max-width:400px; text-align:center;">
+      <h2 style="margin-top:0;">Connect to Device?</h2>
+      <p style="color:#aaa; margin-bottom:10px;">Detected ESP32/Satellite on:</p>
+      <div id="confirm-port-name" style="font-size:1.4rem; font-weight:600; color:#00d2ff; margin-bottom:5px;">COM?</div>
+      <div id="confirm-port-info" style="font-size:0.85rem; color:#888; margin-bottom:15px;">Unknown Device</div>
+      
+      <div style="margin-bottom:25px; text-align:left; background:rgba(0,0,0,0.2); padding:10px; border-radius:6px;">
+        <label for="baud-rate-select" style="font-size:0.9rem; color:#ccc; display:block; margin-bottom:5px;">Connection Baud Rate:</label>
+        <select id="baud-rate-select" style="width:100%; padding:8px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:4px;">
+            <option value="9600">9600 bps</option>
+            <option value="19200">19200 bps</option>
+            <option value="38400">38400 bps</option>
+            <option value="57600">57600 bps</option>
+            <option value="115200" selected>115200 bps</option>
+        </select>
+      </div>
+      
+      <div style="display:flex; justify-content:center; gap:15px;">
+        <button class="btn-secondary" onclick="document.getElementById('confirm-modal').classList.add('hidden'); document.getElementById('ports-modal').classList.remove('hidden');" style="flex:1;">Pick Manually</button>
+        <button class="btn-primary" onclick="window.confirmPortConnect()" style="flex:1;">Yes, Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart Expansion Modal -->
+  <div id="chart-modal" class="modal-overlay hidden">
+    <div class="modal-content large-chart-modal">
+      <button class="modal-close" onclick="closeChartModal()">×</button>
+      <div class="modal-header-row">
+        <div id="modal-chart-title" class="modal-title">Chart Title</div>
+        <div class="modal-controls">
+          <span class="zoom-hint"> Scroll to zoom · Drag to pan</span>
+          <button class="modal-reset-zoom-btn" onclick="resetExpandedZoom()">⟳ Reset Zoom</button>
+          <button id="modal-pause-btn" class="modal-reset-zoom-btn" onclick="toggleGraphPause()"
+            style="border-color:rgba(0,210,255,0.4);"> Pause</button>
+        </div>
+      </div>
+      <div class="modal-chart-container">
+        <canvas id="expanded-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Earth Expansion Modal -->
+  <div id="earth-modal" class="modal-overlay hidden">
+    <div class="modal-content earth-expand-modal">
+      <button class="modal-close" onclick="closeEarthModal()">×</button>
+      <div class="modal-header-row">
+        <div class="modal-title"> Global Orbital View</div>
+        <div class="modal-controls">
+          <button class="test-coord-btn" onclick="toggleTestCoords()"> Sim Coords</button>
+          <span class="zoom-hint"> Drag to rotate · Scroll to zoom</span>
+        </div>
+      </div>
+      
+      <!-- Simulation Controls -->
+      <div id="test-coord-panel" class="test-coord-panel hidden">
+        <div class="test-group">
+          <label>Latitude:</label>
+          <input type="number" id="test-lat" placeholder="0.0" step="0.1">
+        </div>
+        <div class="test-group">
+          <label>Lon:</label>
+          <input type="number" id="test-lon" placeholder="0.0" step="0.1">
+        </div>
+        <div class="test-group">
+          <label>Alt (km):</label>
+          <input type="number" id="test-alt" placeholder="400" step="1">
+        </div>
+        <button class="apply-btn" onclick="applyTestCoords()">Update Orbit</button>
+      </div>
+
+      <div id="expanded-earth-container" class="expanded-earth-container"></div>
+    </div>
+  </div>
+
+  <!-- Satellite Attitude Modal -->
+  <div id="attitude-modal" class="modal hidden">
+    <div class="modal-content mega-modal">
+      <div class="modal-header-row">
+        <div class="modal-title"> Satellite Systems Detail</div>
+        <div class="modal-controls">
+          <span class="zoom-hint"> Drag to rotate · Scroll to zoom</span>
+          <button class="close-btn" onclick="closeAttitudeModal()">×</button>
+        </div>
+      </div>
+      
+      <div id="expanded-sat-container" class="expanded-sat-container"></div>
+      
+      <div class="sat-stats-overlay">
+        <div class="stat-item">Roll: <span id="sat-roll-val">0.0°</span></div>
+        <div class="stat-item">Pitch: <span id="sat-pitch-val">0.0°</span></div>
+        <div class="stat-item">Yaw: <span id="sat-yaw-val">0.0°</span></div>
+      </div>
+    </div>
+  </div>
+  <!-- Earth Horizon Cinematic Overlay (shown on login) -->
+  <!-- Registration Modal -->
+  <div id="register-modal" class="modal-overlay hidden" style="z-index:10001;">
+    <div class="modal-content" style="max-width:400px;">
+      <div class="modal-header-row">
+        <div class="modal-title"> Admin Registration</div>
+        <button class="modal-close" onclick="document.getElementById('register-modal').classList.add('hidden')">×</button>
+      </div>
+      <form id="register-form" style="display:flex; flex-direction:column; gap:15px; margin-top:15px;">
+        <div class="input-group">
+          <input type="text" id="reg-username" placeholder="Desired Username" required style="width:100%; padding:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:8px;">
+        </div>
+        <div class="input-group">
+          <input type="email" id="reg-email" placeholder="Email Address" required style="width:100%; padding:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:8px;">
+        </div>
+        <div class="input-group">
+          <input type="password" id="reg-password" placeholder="Password" required style="width:100%; padding:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:8px;">
+          <button type="button" class="password-toggle-btn" onclick="window.togglePassword('reg-password')">
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <p style="font-size:0.75rem; color:#888;">Requests are sent to the IT Admin for approval. You will be notified once approved.</p>
+        <button type="submit" class="btn-primary">Submit Request</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mission Gallery Modal -->
+  <div id="gallery-modal" class="modal-overlay hidden" style="z-index:9000;">
+    <div class="modal-content mega-modal" style="max-width:1200px; max-height:85vh;">
+      <div class="modal-header-row">
+        <div class="modal-title"> Mission Gallery & Image Archive</div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn-guest" onclick="window.refreshGallery()" style="padding:6px 12px; font-size:0.8rem;"> Refresh</button>
+            <button class="modal-close" onclick="document.getElementById('gallery-modal').classList.add('hidden')">×</button>
+        </div>
+      </div>
+      <div id="gallery-grid" class="gallery-grid">
+        <!-- Gallery cards injected here -->
+        <div style="grid-column: 1/-1; text-align:center; padding:100px; color:#888;">
+            <div style="font-size:3rem; margin-bottom:20px;"></div>
+            <p>No mission images archived yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Lightbox -->
+  <div id="gallery-lightbox" class="modal-overlay hidden" style="z-index:10000; background:rgba(0,0,0,0.95);" onclick="this.classList.add('hidden')">
+    <div style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+        <img id="lightbox-img" src="" style="max-width:95vw; max-height:95vh; object-fit:contain; border-radius:4px; box-shadow:0 0 50px rgba(0,0,0,0.5);">
+        <div id="lightbox-meta" style="position:absolute; bottom:40px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); padding:15px 25px; border-radius:30px; border:1px solid rgba(255,255,255,0.1); color:#fff; text-align:center;">
+            <!-- Meta text here -->
+        </div>
+        <button class="modal-close" style="position:absolute; top:20px; right:20px;">×</button>
+    </div>
+  </div>
+
+  <!-- Attitude Expanded Modal -->
+  <div id="attitude-modal" class="modal-overlay hidden" style="z-index:9000;">
+    <div class="modal-content large-chart-modal" style="display:flex; flex-direction:column; gap:20px;">
+        <div class="modal-header-row">
+            <div class="modal-title"> Advanced Orientation Analysis</div>
+            <button class="modal-close" onclick="window.closeAttitudeModal()">×</button>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 300px; gap:20px; flex:1; min-height:0;">
+            <div id="expanded-sat-container" style="background:rgba(0,0,0,0.3); border-radius:15px; position:relative; overflow:hidden; cursor:grab;">
+                <!-- High-detail 3D satellite goes here -->
+                <div style="position:absolute; top:15px; left:15px; background:rgba(0,0,0,0.6); padding:8px 12px; border-radius:8px; font-size:0.75rem; color:#aaa; pointer-events:none; border:1px solid rgba(255,255,255,0.1);">
+                     Drag to Orbit ·  Scroll to Zoom
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:15px;">
+                <div class="card" style="padding:15px; gap:10px; background:rgba(255,255,255,0.03);">
+                    <div style="color:#888; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">Euler Angles</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:#aaa;">Roll (φ)</span>
+                        <b id="sat-roll-val" style="color:#fff; font-size:1.2rem;">0.0°</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:#aaa;">Pitch (θ)</span>
+                        <b id="sat-pitch-val" style="color:#fff; font-size:1.2rem;">0.0°</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:#aaa;">Yaw (ψ)</span>
+                        <b id="sat-yaw-val" style="color:#fff; font-size:1.2rem;">0.0°</b>
+                    </div>
+                </div>
+                <div class="card" style="padding:15px; gap:10px; flex:1; background:rgba(101, 63, 132, 0.05);">
+                    <div style="color:#888; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">ADCS Status</div>
+                    <div id="adcs-modal-status" style="font-size:0.85rem; color: #39ff14; display:flex; align-items:center; gap:8px;">
+                        <span class="dot" style="background:#39ff14; box-shadow:0 0 10px #39ff14;"></span> Stable Orbit
+                    </div>
+                    <p style="font-size:0.75rem; color:#666; margin-top:10px;">The Attitude Determination & Control System is using fused IMU data to maintain high-precision orientation.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <div id="earth-horizon-cinematic">
+    <div class="cin-stars"></div>
+
+    <!-- Orbital Descent Layers -->
+    <div class="cin-orbit-layer high-orbit">
+      <div class="cin-satellite s1">
+        <div class="beacon"></div>
+      </div>
+      <div class="cin-satellite s2">
+        <div class="beacon"></div>
+      </div>
+      <div class="cin-debris d1"></div>
+      <div class="cin-debris d2"></div>
+      <div class="cin-debris d3"></div>
+    </div>
+
+    <div class="cin-earth-body">
+    </div>
+    <div class="cin-atmosphere"></div>
+  </div>
+
+  <!-- Scripts -->
+</body>
+
+</html>

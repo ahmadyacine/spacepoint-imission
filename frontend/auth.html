@@ -247,7 +247,7 @@
         if (data.role === 'admin') {
           window.location.href = '/admin';
         } else {
-          window.location.href = '/mission';
+          window.location.href = '/home';
         }
       } catch (err) {
         showMsg(err.message);
@@ -297,7 +297,7 @@
     const token = localStorage.getItem('sp_token');
     if (token) {
       const role = localStorage.getItem('sp_role');
-      window.location.href = role === 'admin' ? '/admin' : '/mission';
+      window.location.href = role === 'admin' ? '/admin' : '/home';
     }
   </script>
 </body>

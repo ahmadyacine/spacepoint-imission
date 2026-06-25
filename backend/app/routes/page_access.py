@@ -19,9 +19,11 @@ LOCKABLE_PAGES = [
     {"key": "mass-budget",  "label": "Mass Budget"},
     {"key": "cost-budget",  "label": "Cost Budget"},
     {"key": "dashboard",    "label": "Dashboard"},
+    {"key": "cdhs-telemetry",    "label": "Ground Station: CDHS Telemetry"},
+    {"key": "adcs-telemetry",    "label": "Ground Station: ADCS & Attitude"},
 ]
 
-ALWAYS_OPEN = {"mission", "components", "conops"}
+ALWAYS_OPEN = {"mission", "components", "conops", "software-guide"}
 
 def require_admin(user: User = Depends(get_current_user)):
     if user.role != "admin":
@@ -56,6 +58,11 @@ class PageAccessUpdate(BaseModel):
 
 
 # ── Student endpoint: check access based on their registered code ─────────────
+@router.get("/check/software-guide")
+def check_software_guide_access():
+    """Bypass auth completely for the static Software Guide."""
+    return {"is_unlocked": True}
+
 @router.get("/check/{page_key}")
 def check_page_access(
     page_key: str,

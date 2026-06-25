@@ -94,6 +94,25 @@ def read_dashboard():
 def read_admin():
     return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
 
+@app.get("/home")
+def read_home():
+    return FileResponse(os.path.join(FRONTEND_DIR, "home.html"))
+
+@app.get("/ground-station")
+def read_ground_station():
+    return FileResponse(os.path.join(FRONTEND_DIR, "ground-station", "index.html"))
+
+# Mount Software Guide as static directory (no files moved)
+GUIDE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "..", "spacepoint-software-guide-main")
+
+if os.path.exists(GUIDE_DIR):
+    app.mount("/guide", StaticFiles(directory=GUIDE_DIR, html=True), name="guide")
+
+# Mount ground-station static assets
+GROUND_STATION_DIR = os.path.join(FRONTEND_DIR, "ground-station")
+if os.path.exists(GROUND_STATION_DIR):
+    app.mount("/ground-station", StaticFiles(directory=GROUND_STATION_DIR, html=True), name="ground-station")
+
 # Mount the entire frontend directory for any other static assets (images, etc)
 # This must be LAST so it doesn't override the API or explicit routes
 if os.path.exists(FRONTEND_DIR):

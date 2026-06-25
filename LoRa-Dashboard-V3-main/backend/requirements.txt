@@ -1,0 +1,13 @@
+pyserial
+flask
+flask-cors
+flask-socketio
+simple-websocket
+paho-mqtt
+flask-bcrypt
+python-socketio[client]
+requests
+gunicorn
+eventlet
+psycopg2-binary
+python-dotenv
