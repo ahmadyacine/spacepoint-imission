@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpacePoint Software Guide Platform</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        :root {
+            --sp-purple: #2B0A3D;
+            --sp-light-purple: #6B21A8;
+            --sp-accent: #A855F7;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a0526 0%, #2B0A3D 100%);
+            min-height: 100vh;
+        }
+
+        .glass {
+            background: rgba(107, 33, 168, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, #6B21A8 0%, #A855F7 100%);
+        }
+
+        .code-input {
+            background: rgba(0, 0, 0, 0.3);
+            color: #A855F7;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .code-input:focus {
+            outline: none;
+            border-color: #A855F7;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-not-started {
+            background: rgba(107, 114, 128, 0.2);
+            color: #9CA3AF;
+        }
+
+        .status-in-progress {
+            background: rgba(251, 191, 36, 0.2);
+            color: #FCD34D;
+        }
+
+        .status-completed {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6EE7B7;
+        }
+
+        @media (max-width: 768px) {
+            #sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+            }
+
+            #sidebar.open {
+                transform: translateX(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="text-white">
+    <!-- Mobile Menu Button -->
+    <button id="mobile-menu-btn" class="md:hidden fixed top-4 left-4 z-50 glass p-3 rounded-lg">
+        <i data-lucide="menu" class="w-6 h-6"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed left-0 top-0 h-full w-64 glass border-r border-purple-500/20 p-6 z-40 md:transform-none">
+        <div class="mb-8 flex flex-col items-center">
+            <!-- Custom SpacePoint Logo Image -->
+            <img src="SpacePoint logo.png" alt="SpacePoint Logo" class="w-48 h-auto mb-2">
+            <p class="text-xs text-purple-300 tracking-widest uppercase">Software Guide</p>
+        </div>
+
+        <!-- Search -->
+        <div class="mb-6">
+            <div class="relative">
+                <input type="text" id="search-input" placeholder="Search lessons..."
+                    class="w-full bg-black/30 border border-purple-500/30 rounded-lg px-4 py-2 pl-10 text-sm focus:outline-none focus:border-purple-500">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-purple-300"></i>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav id="sidebar-nav" class="space-y-2">
+            <!-- Will be populated by JS -->
+        </nav>
+
+        <!-- Navigation Actions -->
+        <div class="absolute bottom-6 left-6 right-6 space-y-2">
+            <a href="/home" class="flex items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition-colors text-sm font-semibold text-gray-200 border border-purple-500/20 bg-black/20">
+                <i data-lucide="layout-grid" class="w-4 h-4 text-purple-400"></i>
+                Back to Hub
+            </a>
+            <button onclick="localStorage.removeItem('sp_token'); localStorage.removeItem('sp_role'); window.location.href='/';" class="w-full flex items-center gap-2 p-3 rounded-lg hover:bg-red-500/20 transition-colors text-sm font-semibold text-red-300 border border-red-500/20 bg-black/20">
+                <i data-lucide="log-out" class="w-4 h-4 text-red-400"></i>
+                Sign Out
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content" class="md:ml-64 min-h-screen p-6">
+        <!-- Breadcrumbs -->
+        <div id="breadcrumbs" class="mb-6 flex items-center gap-2 text-sm text-purple-300">
+            <!-- Will be populated by JS -->
+        </div>
+
+        <!-- Dynamic Content Area -->
+        <div id="content-area" class="fade-in">
+            <!-- Content will be rendered here by app.js -->
+        </div>
+    </main>
+
+    <!-- Load Data Modules -->
+    <script src="js/init.js"></script>
+    <script src="js/practice.js"></script>
+    <script src="js/data/overview.js"></script>
+    <script src="js/data/intro.js"></script>
+    <script src="js/data/communication_uni.js"></script>
+    <script src="js/data/communication_school.js"></script>
+    <script src="js/data/cdhs.js"></script>
+    <script src="js/data/adcs.js"></script>
+
+    <!-- Load Core Logic -->
+    <script src="js/activities.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+
+        mobileMenuBtn?.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        // Close sidebar on content click (mobile)
+        document.getElementById('main-content')?.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                sidebar.classList.remove('open');
+            }
+        });
+    </script>
+
+    <!-- Intercom Messenger -->
+    <script>
+        window.intercomSettings = {
+            api_base: "https://api-iam.intercom.io",
+            app_id: "hsw1zj8e",
+        };
+    </script>
+
+    <script>
+        // We pre-filled your app ID in the widget URL: 'https://widget.intercom.io/widget/hsw1zj8e'
+        (function () { var w = window; var ic = w.Intercom; if (typeof ic === "function") { ic('reattach_activator'); ic('update', w.intercomSettings); } else { var d = document; var i = function () { i.c(arguments); }; i.q = []; i.c = function (args) { i.q.push(args); }; w.Intercom = i; var l = function () { var s = d.createElement('script'); s.type = 'text/javascript'; s.async = true; s.src = 'https://widget.intercom.io/widget/hsw1zj8e'; var x = d.getElementsByTagName('script')[0]; x.parentNode.insertBefore(s, x); }; if (document.readyState === 'complete') { l(); } else if (w.attachEvent) { w.attachEvent('onload', l); } else { w.addEventListener('load', l, false); } } })();
+    </script>
+</body>
+
+</html>
