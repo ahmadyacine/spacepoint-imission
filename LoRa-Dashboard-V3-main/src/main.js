@@ -555,7 +555,8 @@ window.detectPorts = async () => {
                             const val = metricId === 'temp' ? entry.data[metricId].toFixed(2) : 
                                        metricId === 'voltage' ? entry.data[metricId].toFixed(3) : 
                                        entry.data[metricId].toFixed(4);
-                            updateMetric(metricId, val, entry.timestamp);
+                            const mappedId = metricId === 'voltage' ? 'batt' : (metricId === 'current' ? 'item_current' : metricId);
+                            updateMetric(mappedId, val, entry.timestamp);
                         }
                     }
                 }
