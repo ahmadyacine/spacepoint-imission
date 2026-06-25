@@ -4,12 +4,12 @@ import { io } from 'socket.io-client';
 let socket;
 
 export function initSocket(callbacks) {
-    // In Socket.IO v4, namespace is appended to the server URL.
-    // io('http://localhost:5000/ws/telemetry') connects to the namespace /ws/telemetry on localhost:5000
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    // Connect directly to the origin so Nginx can proxy /socket.io/ correctly.
+    // The VITE_BACKEND_URL is used only for REST API calls, NOT for WebSocket.
+    const SOCKET_URL = window.location.origin;
     const NAMESPACE = '/ws/telemetry';
 
-    socket = io(BACKEND_URL + NAMESPACE, {
+    socket = io(SOCKET_URL + NAMESPACE, {
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionDelay: 1000,
@@ -38,7 +38,8 @@ export function initSocket(callbacks) {
         if (callbacks.onCommandUpdate) callbacks.onCommandUpdate(data);
     });
 
-    const rootSocket = io(BACKEND_URL, {
+    // Root socket for serial events
+    const rootSocket = io(SOCKET_URL, {
         transports: ['websocket', 'polling']
     });
     
