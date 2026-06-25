@@ -260,7 +260,8 @@ export function updateMetric(id, value, timestamp) {
     if (valEl) {
         const metric = metrics.find(m => m.id === id);
         if (!isNaN(numValue)) {
-            const decimals = id === 'batt' ? 3 : id === 'item_current' ? 4 : 2;
+            // batt=3 decimals, current/power=4 decimals for tiny ESP32 values, temp=2
+            const decimals = id === 'batt' ? 3 : (id === 'item_current' || id === 'power') ? 4 : 2;
             valEl.innerText = numValue.toFixed(decimals);
         } else {
             valEl.innerText = '--';
