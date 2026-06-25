@@ -121,7 +121,7 @@ function initLogin() {
 
     // ── Auto-verify for students coming from the Hub ─────────────────────────
     const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
+    const urlToken = urlParams.get('token') || localStorage.getItem('sp_token');
     if (urlToken) {
         // Hide login portal immediately to ensure seamless entry
         loginPortal.classList.add('hidden');
