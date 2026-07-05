@@ -38,6 +38,24 @@ def get_component(component_id: uuid.UUID, db: Session = Depends(get_db), curren
 
 # ── Admin Routes ─────────────────────────────────────────────────────────────
 
+@router.get("/admin/all", response_model=List[ComponentOut])
+def list_all_components_admin(
+    subsystem: Optional[str] = Query(None),
+    tag: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    """Admin-only: returns ALL components including inactive ones."""
+    q = db.query(Component)
+    if subsystem:
+        q = q.filter(Component.subsystem == subsystem)
+    if tag:
+        q = q.filter(Component.tag == tag)
+    if search:
+        q = q.filter(Component.component_name.ilike(f"%{search}%"))
+    return q.all()
+
 @router.post("", response_model=ComponentOut, status_code=201)
 def create_component(data: ComponentCreate, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     comp = Component(**data.model_dump())

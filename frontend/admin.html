@@ -93,6 +93,17 @@
               <option>ADCS</option><option>CDHS</option><option>EPS</option>
               <option>COMMS</option><option>Payload</option><option>Structure</option><option>Thermal</option>
             </select>
+            <select id="filter-tag" class="input-field flex-1 sm:w-[120px]" onchange="filterCompTable()">
+              <option value="">All Tags</option>
+              <option value="TinkerCAD">TinkerCAD</option>
+              <option value="Physical">Physical</option>
+              <option value="SatKit">SatKit</option>
+            </select>
+            <select id="filter-status" class="input-field flex-1 sm:w-[110px]" onchange="filterCompTable()">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
             <div class="flex gap-1.5 flex-1 sm:flex-initial">
               <button onclick="downloadExcelTemplate()" class="btn-edit whitespace-nowrap text-xs flex items-center justify-center gap-1.5 flex-1 sm:flex-initial" style="color:#fcd34d; border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.1);" title="Download Excel Template">
                 📥 Template
@@ -561,6 +572,7 @@
               <option value="">None</option>
               <option value="TinkerCAD">TinkerCAD</option>
               <option value="Physical">Physical</option>
+              <option value="SatKit">SatKit</option>
             </select>
           </div>
           <div>
@@ -1190,8 +1202,8 @@
     init();
 
     async function loadComponents() {
-      // Admin token — fetch all including inactive by passing auth
-      const res = await fetch(`${API}/components`, { headers: { Authorization:`Bearer ${token}` } });
+      // Use admin endpoint to fetch ALL components including inactive ones
+      const res = await fetch(`${API}/components/admin/all`, { headers: { Authorization:`Bearer ${token}` } });
       allComponents = await res.json();
       updateStats();
       filterCompTable();
@@ -1209,8 +1221,13 @@
     function filterCompTable() {
       const searchComp = document.getElementById('search-comp').value.toLowerCase();
       const sub = document.getElementById('filter-sub').value;
+      const tag = document.getElementById('filter-tag').value;
+      const status = document.getElementById('filter-status').value;
       let filtered = allComponents;
       if (sub) filtered = filtered.filter(c=>c.subsystem===sub);
+      if (tag) filtered = filtered.filter(c=>c.tag===tag);
+      if (status === 'active') filtered = filtered.filter(c=>c.is_active);
+      if (status === 'inactive') filtered = filtered.filter(c=>!c.is_active);
       if (searchComp) filtered = filtered.filter(c=>c.component_name.toLowerCase().includes(searchComp)||c.subsystem.toLowerCase().includes(searchComp));
       renderTable(filtered);
     }
