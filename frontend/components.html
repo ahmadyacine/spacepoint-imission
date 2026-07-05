@@ -322,9 +322,13 @@
                 <div class="font-bold text-white">${c.scaled_mass_g ?? '–'}g</div>
                 <div style="color:rgba(215,210,203,0.4);">Mass</div>
               </div>
-              <div class="rounded-lg p-2 text-center col-span-2" style="background:rgba(255,255,255,0.04);">
+              <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,0.04);">
                 <div class="font-bold text-white text-xs">${c.scaled_dimensions_mm || '–'}</div>
-                <div style="color:rgba(215,210,203,0.4);">Dimensions (mm)</div>
+                <div style="color:rgba(215,210,203,0.4);">Dimensions</div>
+              </div>
+              <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,0.04);">
+                <div class="font-bold text-white text-xs">${c.data_size || '–'}</div>
+                <div style="color:rgba(215,210,203,0.4);">Data Size</div>
               </div>
               <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,0.04);">
                 <div class="font-bold" style="color:#fcd34d;">$${c.assumed_cost_usd ?? '–'}</div>
