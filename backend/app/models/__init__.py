@@ -12,3 +12,4 @@ from app.models.mass_budget_entry import MassBudgetEntry
 from app.models.cost_budget_entry import CostBudgetEntry
 from app.models.invitation_code import InvitationCode
 from app.models.page_access import PageAccess
+from app.models.checklist import ChecklistProgress

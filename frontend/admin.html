@@ -70,6 +70,7 @@
       <button id="tab-missions" onclick="switchAdminTab('missions')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🚀 Student Missions</button>
       <button id="tab-pages" onclick="switchAdminTab('pages')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🔐 Page Access</button>
       <button id="tab-gs" onclick="switchAdminTab('gs')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🛰️ Ground Station</button>
+      <button id="tab-checklist" onclick="switchAdminTab('checklist')" class="py-4 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition-colors whitespace-nowrap">🏕️ Camp Checklist</button>
     </div>
   </div>
 
@@ -664,6 +665,70 @@
     </div>
   </div>
 
+  <!-- CAMP CHECKLIST VIEW -->
+  <div id="view-checklist" class="admin-view hidden">
+    <div class="px-4 sm:px-8 py-6 border-b" style="border-color:rgba(215,210,203,0.08);">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-white">🏕️ Camp Checklist Monitor</h1>
+          <p class="text-sm mt-0.5" style="color:rgba(215,210,203,0.45);">View student progress through the 4-day Summer Camp checklist.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <select id="checklist-code-filter" class="input-field w-[180px]" onchange="loadChecklist()">
+            <option value="">All Batches</option>
+          </select>
+          <button onclick="loadChecklist()" class="btn-primary whitespace-nowrap">🔄 Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-8 py-8 pb-12">
+      <!-- Summary Stats -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8" id="checklist-stats">
+        <div class="rounded-xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
+          <p class="text-xs" style="color:rgba(215,210,203,0.4);">Students</p>
+          <p id="ck-stat-students" class="text-2xl font-bold text-white mt-1">–</p>
+        </div>
+        <div class="rounded-xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
+          <p class="text-xs" style="color:rgba(215,210,203,0.4);">Avg. Completion</p>
+          <p id="ck-stat-avg" class="text-2xl font-bold mt-1" style="color:#c4a0e8;">–</p>
+        </div>
+        <div class="rounded-xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
+          <p class="text-xs" style="color:rgba(215,210,203,0.4);">Fully Complete</p>
+          <p id="ck-stat-complete" class="text-2xl font-bold mt-1" style="color:#6ee7b7;">–</p>
+        </div>
+        <div class="rounded-xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(215,210,203,0.08);">
+          <p class="text-xs" style="color:rgba(215,210,203,0.4);">Total Tasks (per student)</p>
+          <p id="ck-stat-total" class="text-2xl font-bold mt-1" style="color:#fcd34d;">–</p>
+        </div>
+      </div>
+
+      <!-- Students Table -->
+      <div class="rounded-2xl overflow-hidden" style="border:1.5px solid rgba(215,210,203,0.09);">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left" style="border-collapse:collapse; min-width:800px;">
+            <thead style="background:rgba(36,17,52,0.8);">
+              <tr>
+                <th>Student</th>
+                <th>Batch</th>
+                <th>Day 1 🚀</th>
+                <th>Day 2 ⚡</th>
+                <th>Day 3 🔧</th>
+                <th>Day 4 🎖️</th>
+                <th>Overall</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="checklist-tbody" style="background:rgba(30,16,48,0.6);"></tbody>
+          </table>
+        </div>
+        <div id="checklist-empty" class="hidden text-center py-12" style="color:rgba(215,210,203,0.3);">
+          <p class="text-sm">No student data found.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API = window.location.origin + '/api';
     const token = localStorage.getItem('sp_token');
@@ -673,7 +738,7 @@
 
     // ── Tab Management ────────────────────────────────────────────────────────
     let currentTab = 'components';
-    const ALL_TABS = ['components', 'codes', 'students', 'missions', 'pages', 'gs'];
+    const ALL_TABS = ['components', 'codes', 'students', 'missions', 'pages', 'gs', 'checklist'];
     function switchAdminTab(tab) {
       ALL_TABS.forEach(t => {
         const view = document.getElementById('view-' + t);
@@ -718,6 +783,17 @@
            gsFilter.innerHTML = '<option value="">Choose a Code…</option>' + allCodes.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
         }
         loadGSAccess();
+      }
+      if (tab === 'checklist') {
+        const ckFilter = document.getElementById('checklist-code-filter');
+        if (allCodes.length === 0) {
+           loadCodes().then(() => {
+             ckFilter.innerHTML = '<option value="">All Batches</option>' + allCodes.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
+           });
+        } else {
+           ckFilter.innerHTML = '<option value="">All Batches</option>' + allCodes.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
+        }
+        loadChecklist();
       }
     }
 
@@ -1802,7 +1878,178 @@
       } catch (e) { showMsg(e.detail || e.message); }
     }
 
+    // ── Camp Checklist Monitor ───────────────────────────────────────────────
+    let allChecklists = [];
+    async function loadChecklist() {
+      try {
+        const res = await fetch(`${API}/checklist/admin/all`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw await res.json();
+        allChecklists = await res.json();
+        renderChecklistTable();
+      } catch (e) {
+        showMsg(e.detail || e.message || 'Failed to load checklists');
+      }
+    }
+
+    function renderChecklistTable() {
+      const code = document.getElementById('checklist-code-filter').value;
+      const tbody = document.getElementById('checklist-tbody');
+      const empty = document.getElementById('checklist-empty');
+      
+      let filtered = allChecklists;
+      if (code) {
+        filtered = allChecklists.filter(c => c.invitation_code === code);
+      }
+
+      if (!filtered.length) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        updateChecklistStats(0, 0, 0, 30);
+        return;
+      }
+      empty.classList.add('hidden');
+
+      let totalProgressPct = 0;
+      let fullyCompleteCount = 0;
+      const totalTasks = filtered[0] ? filtered[0].total_items : 30;
+
+      tbody.innerHTML = filtered.map((c, index) => {
+        const d1 = c.days.day1;
+        const d2 = c.days.day2;
+        const d3 = c.days.day3;
+        const d4 = c.days.day4;
+        const totalDone = c.total_done;
+        const totalItems = c.total_items;
+        const pct = totalItems > 0 ? Math.round((totalDone / totalItems) * 100) : 0;
+        
+        totalProgressPct += pct;
+        if (totalDone === totalItems) fullyCompleteCount++;
+
+        // Detailed checklist preview HTML
+        const detailId = `chk-detail-${index}`;
+        const day1ItemsHTML = renderDetailList(1, c.checked_keys);
+        const day2ItemsHTML = renderDetailList(2, c.checked_keys);
+        const day3ItemsHTML = renderDetailList(3, c.checked_keys);
+        const day4ItemsHTML = renderDetailList(4, c.checked_keys);
+
+        return `
+          <tr>
+            <td>
+              <div class="font-semibold text-white">${c.full_name}</div>
+              <div class="text-xs text-zinc-400">${c.email}</div>
+            </td>
+            <td class="font-mono text-xs tracking-wider">${c.invitation_code}</td>
+            <td class="text-xs">${d1.done} / ${d1.total}</td>
+            <td class="text-xs">${d2.done} / ${d2.total}</td>
+            <td class="text-xs">${d3.done} / ${d3.total}</td>
+            <td class="text-xs">${d4.done} / ${d4.total}</td>
+            <td>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-white">${totalDone} / ${totalItems}</span>
+                <div class="w-16 bg-white/10 rounded-full h-1.5 overflow-hidden hidden sm:block">
+                  <div class="bg-secondary h-full rounded-full" style="width: ${pct}%"></div>
+                </div>
+                <span class="text-[10px] opacity-60">(${pct}%)</span>
+              </div>
+            </td>
+            <td>
+              <button onclick="toggleChecklistDetails('${detailId}')" class="btn-edit text-[10px] py-1 px-2.5">
+                👁️ Details
+              </button>
+            </td>
+          </tr>
+          <tr id="${detailId}" class="hidden" style="background: rgba(0,0,0,0.15);">
+            <td colspan="8" class="p-6">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-6 text-xs max-h-[300px] overflow-y-auto">
+                <div class="border-r border-white/5 pr-4">
+                  <h4 class="font-bold text-white mb-3">Day 1 🚀</h4>
+                  <ul class="space-y-1.5">${day1ItemsHTML}</ul>
+                </div>
+                <div class="border-r border-white/5 pr-4">
+                  <h4 class="font-bold text-white mb-3">Day 2 ⚡</h4>
+                  <ul class="space-y-1.5">${day2ItemsHTML}</ul>
+                </div>
+                <div class="border-r border-white/5 pr-4">
+                  <h4 class="font-bold text-white mb-3">Day 3 🔧</h4>
+                  <ul class="space-y-1.5">${day3ItemsHTML}</ul>
+                </div>
+                <div>
+                  <h4 class="font-bold text-white mb-3">Day 4 🎖️</h4>
+                  <ul class="space-y-1.5">${day4ItemsHTML}</ul>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const avgPct = Math.round(totalProgressPct / filtered.length);
+      updateChecklistStats(filtered.length, avgPct, fullyCompleteCount, totalTasks);
+    }
+
+    const ADMIN_CHECKLIST_ITEMS = [
+      // Day 1
+      { key: "day1_1", day: 1, label: "Attend the Opening Ceremony" },
+      { key: "day1_2", day: 1, label: "Meet your teammates" },
+      { key: "day1_3", day: 1, label: "Form your engineering team" },
+      { key: "day1_4", day: 1, label: "Choose your satellite mission" },
+      { key: "day1_5", day: 1, label: "Learn about the UAE Space Ecosystem" },
+      { key: "day1_6", day: 1, label: "Discover how satellites help our world" },
+      { key: "day1_7", day: 1, label: "Explore satellite architecture" },
+      { key: "day1_8", day: 1, label: "Get started with the Madar Mission Design Platform" },
+      { key: "day1_9", day: 1, label: "Learn about CDHS" },
+      // Day 2
+      { key: "day2_1", day: 2, label: "Learn about EPS" },
+      { key: "day2_2", day: 2, label: "Calculate power budget" },
+      { key: "day2_3", day: 2, label: "Explore ADCS" },
+      { key: "day2_4", day: 2, label: "Understand satellite communications" },
+      { key: "day2_5", day: 2, label: "Learn telemetry & data flow" },
+      { key: "day2_6", day: 2, label: "Record decisions on Madar" },
+      { key: "day2_7", day: 2, label: "Complete activities" },
+      // Day 3
+      { key: "day3_1", day: 3, label: "Assemble your satellite" },
+      { key: "day3_2", day: 3, label: "Integrate satellite subsystems" },
+      { key: "day3_3", day: 3, label: "Test your satellite" },
+      { key: "day3_4", day: 3, label: "Troubleshoot & improve" },
+      { key: "day3_5", day: 3, label: "Update engineering docs" },
+      { key: "day3_6", day: 3, label: "Finalize mission poster" },
+      { key: "day3_7", day: 3, label: "Prepare for Demo Day" },
+      // Day 4
+      { key: "day4_1", day: 4, label: "Present mission poster" },
+      { key: "day4_2", day: 4, label: "Demonstrate satellite" },
+      { key: "day4_3", day: 4, label: "Explain decisions" },
+      { key: "day4_4", day: 4, label: "Answer questions" },
+      { key: "day4_5", day: 4, label: "Celebrate success" },
+      { key: "day4_6", day: 4, label: "Receive certificate" }
+    ];
+
+    function renderDetailList(dayNum, checkedKeys) {
+      const items = ADMIN_CHECKLIST_ITEMS.filter(i => i.day === dayNum);
+      return items.map(item => {
+        const isChecked = checkedKeys.includes(item.key);
+        return `
+          <li class="flex items-center gap-2 ${isChecked ? 'text-zinc-500 line-through' : 'text-zinc-300'}">
+            <span class="${isChecked ? 'text-green-400' : 'text-zinc-600'} font-bold">${isChecked ? '✓' : '○'}</span>
+            <span class="truncate max-w-[180px]" title="${item.label}">${item.label}</span>
+          </li>
+        `;
+      }).join('');
+    }
+
+    function toggleChecklistDetails(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden');
+    }
+
+    function updateChecklistStats(students, avg, complete, total) {
+      document.getElementById('ck-stat-students').textContent = students;
+      document.getElementById('ck-stat-avg').textContent = `${avg}%`;
+      document.getElementById('ck-stat-complete').textContent = complete;
+      document.getElementById('ck-stat-total').textContent = total;
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
     function showMsg(text, isError=true) {
       const wrap = document.getElementById('msg');
       const el = document.getElementById('msg-inner');

@@ -61,7 +61,7 @@
         <p class="text-lg text-gray-400 max-w-2xl mx-auto">Select a platform below to continue your educational aerospace journey.</p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
         
         <!-- Mission Portal -->
         <a href="/mission" class="card-glow rounded-2xl p-8 flex flex-col items-center text-center group cursor-pointer relative overflow-hidden" style="background:linear-gradient(160deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); border:1px solid rgba(215,210,203,0.1);">
@@ -88,6 +88,16 @@
           </div>
           <h2 class="text-xl font-bold mb-3">Ground Station</h2>
           <p class="text-sm text-gray-400">Monitor live satellite telemetry, command subsystems, and visualize orbital data in real-time.</p>
+        </a>
+
+        <!-- Camp Checklist (shown only if unlocked for this batch) -->
+        <a id="checklist-card" href="/checklist" class="card-glow rounded-2xl p-8 flex flex-col items-center text-center group cursor-pointer relative overflow-hidden hidden" style="background:linear-gradient(160deg, rgba(101,63,132,0.12) 0%, rgba(36,17,52,0.6) 100%); border:1px solid rgba(101,63,132,0.3);">
+          <div class="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-4xl" style="background:rgba(101,63,132,0.25); color:#c4a0e8;">
+            🏕️
+          </div>
+          <h2 class="text-xl font-bold mb-3">Camp Checklist</h2>
+          <p class="text-sm text-gray-400">Track your daily progress through the 4-day Future Space Engineers Summer Camp.</p>
+          <div id="checklist-progress-badge" class="mt-4 text-xs font-bold px-3 py-1.5 rounded-full" style="background:rgba(101,63,132,0.3);color:#c4a0e8;border:1px solid rgba(101,63,132,0.4);">View Checklist →</div>
         </a>
 
       </div>
@@ -119,6 +129,32 @@
         if (!res.ok) throw new Error('Session invalid');
         const user = await res.json();
         document.getElementById('user-name').textContent = user.full_name || user.email;
+
+        // Check checklist access
+        try {
+          const chkRes = await fetch('/api/page-access/check/camp-checklist', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const chk = await chkRes.json();
+          if (chk.is_unlocked) {
+            document.getElementById('checklist-card').classList.remove('hidden');
+            // Load progress summary
+            const progRes = await fetch('/api/checklist', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const items = await progRes.json();
+            const done = items.filter(i => i.is_checked).length;
+            const total = items.length;
+            const badge = document.getElementById('checklist-progress-badge');
+            badge.textContent = `${done} / ${total} tasks completed`;
+            if (done === total && total > 0) {
+              badge.style.background = 'rgba(16,185,129,0.2)';
+              badge.style.color = '#6ee7b7';
+              badge.style.borderColor = 'rgba(16,185,129,0.3)';
+            }
+          }
+        } catch (e) { /* checklist access check failed silently */ }
+
       } catch (err) {
         logout();
       }

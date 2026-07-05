@@ -13,14 +13,15 @@ router = APIRouter(prefix="/page-access", tags=["Page Access"])
 # All lockable pages with their human-readable labels.
 # Mission, Components, CONOPS are always unlocked.
 LOCKABLE_PAGES = [
-    {"key": "data-budget",  "label": "Data Budget"},
-    {"key": "power-budget", "label": "Power Budget"},
-    {"key": "link-budget",  "label": "Link Budget"},
-    {"key": "mass-budget",  "label": "Mass Budget"},
-    {"key": "cost-budget",  "label": "Cost Budget"},
-    {"key": "dashboard",    "label": "Dashboard"},
-    {"key": "cdhs-telemetry",    "label": "Ground Station: CDHS Telemetry"},
-    {"key": "adcs-telemetry",    "label": "Ground Station: ADCS & Attitude"},
+    {"key": "data-budget",      "label": "Data Budget"},
+    {"key": "power-budget",     "label": "Power Budget"},
+    {"key": "link-budget",      "label": "Link Budget"},
+    {"key": "mass-budget",      "label": "Mass Budget"},
+    {"key": "cost-budget",      "label": "Cost Budget"},
+    {"key": "dashboard",        "label": "Dashboard"},
+    {"key": "cdhs-telemetry",   "label": "Ground Station: CDHS Telemetry"},
+    {"key": "adcs-telemetry",   "label": "Ground Station: ADCS & Attitude"},
+    {"key": "camp-checklist",   "label": "Camp Checklist"},
 ]
 
 ALWAYS_OPEN = {"mission", "components", "conops", "software-guide"}

@@ -7,7 +7,7 @@ from app.database import Base, engine
 from app.models.invitation_code import InvitationCode
 from app.models.page_access import PageAccess
 import app.models  # ensure all models are registered before create_all
-from app.routes import auth, missions, components, mission_components, conops, data_budget, power_budget, link_budget, mass_budget, cost_budget, dashboard, invitation_codes, page_access
+from app.routes import auth, missions, components, mission_components, conops, data_budget, power_budget, link_budget, mass_budget, cost_budget, dashboard, invitation_codes, page_access, checklist
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
@@ -40,6 +40,7 @@ app.include_router(cost_budget.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(invitation_codes.router, prefix="/api")
 app.include_router(page_access.router, prefix="/api")
+app.include_router(checklist.router, prefix="/api")
 
 # ── Frontend Routes ──────────────────────────────────────────────────────────
 
@@ -97,6 +98,10 @@ def read_admin():
 @app.get("/home")
 def read_home():
     return FileResponse(os.path.join(FRONTEND_DIR, "home.html"))
+
+@app.get("/checklist")
+def read_checklist():
+    return FileResponse(os.path.join(FRONTEND_DIR, "checklist.html"))
 
 
 
