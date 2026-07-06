@@ -120,6 +120,7 @@
         <div>
           <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.55);">Email</label>
           <input type="email" id="signin-email" required placeholder="you@university.edu"
+            autocorrect="off" autocapitalize="none" spellcheck="false"
             class="input-field w-full rounded-xl px-4 py-3 text-sm" />
         </div>
         <div>
@@ -146,6 +147,7 @@
         <div>
           <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color:rgba(215,210,203,0.55);">Email</label>
           <input type="email" id="signup-email" required placeholder="you@university.edu"
+            autocorrect="off" autocapitalize="none" spellcheck="false"
             class="input-field w-full rounded-xl px-4 py-3 text-sm" />
         </div>
         <div>
@@ -234,7 +236,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: document.getElementById('signin-email').value,
+            email: document.getElementById('signin-email').value.trim().toLowerCase(),
             password: document.getElementById('signin-password').value,
           })
         });
@@ -274,8 +276,8 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            full_name: document.getElementById('signup-name').value,
-            email: document.getElementById('signup-email').value,
+            full_name: document.getElementById('signup-name').value.trim(),
+            email: document.getElementById('signup-email').value.trim().toLowerCase(),
             password: pwd,
             invitation_code: document.getElementById('signup-code').value.trim()
           })

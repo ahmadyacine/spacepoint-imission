@@ -208,20 +208,42 @@
 
     // ── Load data ─────────────────────────────────────────────────────────────
     async function init() {
-      const [compRes, mcRes, missionRes] = await Promise.all([
-        fetch(`${API}/components`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API}/missions/${missionId}/components`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API}/missions/${missionId}`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      allComponents = await compRes.json();
-      missionComponents = await mcRes.json();
-      const mission = await missionRes.json();
-      document.getElementById('mission-badge').textContent = mission.mission_name;
-      renderCards(allComponents);
-      renderPanel();
-      updateHeaderPoints();
+      try {
+        const [compRes, mcRes, missionRes] = await Promise.all([
+          fetch(`${API}/components`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API}/missions/${missionId}/components`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API}/missions/${missionId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+
+        // Handle auth failure (token expired / cleared by iOS Safari)
+        if (compRes.status === 401 || missionRes.status === 401) {
+          localStorage.clear();
+          window.location.href = '/';
+          return;
+        }
+        // Handle missing mission (missionId stale / from another session)
+        if (missionRes.status === 404 || mcRes.status === 404) {
+          localStorage.removeItem('sp_mission_id');
+          window.location.href = '/mission';
+          return;
+        }
+
+        allComponents = await compRes.json();
+        missionComponents = await mcRes.json();
+        const mission = await missionRes.json();
+        document.getElementById('mission-badge').textContent = mission.mission_name;
+        renderCards(allComponents);
+        renderPanel();
+        updateHeaderPoints();
+      } catch (err) {
+        console.error('Init failed:', err);
+        // Likely a network or parse error – redirect to mission selection
+        localStorage.removeItem('sp_mission_id');
+        window.location.href = '/mission';
+      }
     }
     init();
+
 
     // ── Filters ───────────────────────────────────────────────────────────────
     function selectFilter(subsys, btn) {

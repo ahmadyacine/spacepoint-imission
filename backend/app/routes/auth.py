@@ -13,7 +13,9 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register", response_model=UserOut, status_code=201)
 def register(data: UserRegister, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == data.email).first()
+    # Normalize email to lowercase to prevent case-sensitivity issues (e.g. Safari autocorrect)
+    normalized_email = data.email.strip().lower()
+    existing = db.query(User).filter(User.email == normalized_email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
         
@@ -23,14 +25,15 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid invitation code")
     if not invitation.is_active:
         raise HTTPException(status_code=400, detail="This invitation code is inactive")
-    if invitation.uses_count >= invitation.max_uses:
+    # max_uses == 0 means unlimited; otherwise enforce the cap
+    if invitation.max_uses > 0 and invitation.uses_count >= invitation.max_uses:
         raise HTTPException(status_code=400, detail="This invitation code has reached its usage limit")
         
     invitation.uses_count += 1
 
     user = User(
         full_name=data.full_name,
-        email=data.email,
+        email=normalized_email,
         hashed_password=hash_password(data.password),
         role="student",
         school_name=data.school_name,
@@ -44,7 +47,9 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(data: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == data.email).first()
+    # Normalize email to lowercase to prevent case-sensitivity issues (e.g. Safari autocorrect on iPad)
+    normalized_email = data.email.strip().lower()
+    user = db.query(User).filter(User.email == normalized_email).first()
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user.is_active:
